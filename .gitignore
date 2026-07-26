@@ -1,0 +1,54 @@
+# Python cache / bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+*.pyd
+*.so
+*.dll
+
+# CUDA / extension build logs
+build_log.txt
+*.log.tmp
+
+# Training outputs and checkpoints
+outputs/
+outputs_*/
+logs/
+*.pth
+*.pt
+*.ckpt
+
+# Datasets and archives
+data/
+datasets/
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+
+# Experiment scratch files
+runs/
+wandb/
+tensorboard/
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+
+# Local notes
+README_progress.md
+PROJECT_STRUCTURE.md
