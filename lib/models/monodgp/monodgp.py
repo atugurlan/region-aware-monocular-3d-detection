@@ -16,6 +16,7 @@ from .det3d_transformer import build_det3d_transformer
 
 from .region_seg_head import RegionSegHead
 from .depth_predictor import DepthPredictor
+from .region_geometry import RegionAwareGeometryHead
 from .depth_predictor.ddn_loss import DDNLoss
 from lib.losses.focal_loss import sigmoid_focal_loss
 from .position_encoding import PositionEmbeddingCamRay
@@ -29,7 +30,8 @@ class MonoDGP(nn.Module):
     """ This is the MonoDGP module that performs monocualr 3D object detection """
     def __init__(self, backbone, depth_predictor, det2d_transformer, det3d_transformer,
                   num_classes, num_queries, num_feature_levels, 
-                  aux_loss=True, with_box_refine=False, init_box=False, group_num=11):
+                  aux_loss=True, with_box_refine=False, init_box=False, group_num=11,
+                  region_aware_cfg=None):
         """ Initializes the model.
         Parameters:
             backbone: torch module of the backbone to be used. See backbone.py
@@ -53,6 +55,27 @@ class MonoDGP(nn.Module):
         self.region_head = RegionSegHead(d_model=hidden_dim)
 
         self.num_feature_levels = num_feature_levels
+        region_aware_cfg = region_aware_cfg or {}
+        self.region_aware_enabled = region_aware_cfg.get('enabled', False)
+        self.region_aware_use_region_mask = region_aware_cfg.get('use_region_mask', False)
+        self.region_aware_output_scale = region_aware_cfg.get('output_scale', 1.0)
+        self.region_aware_use_learnable_gate = region_aware_cfg.get('use_learnable_gate', True)
+
+        if self.region_aware_enabled:
+            self.region_geometry_head = RegionAwareGeometryHead(
+                hidden_dim=hidden_dim,
+                grid_size=region_aware_cfg.get('grid_size', [3, 3]),
+                output_dim=region_aware_cfg.get('output_dim', 1),
+                use_uncertainty=region_aware_cfg.get('use_depth_uncertainty', False),
+            )
+            if self.region_aware_use_learnable_gate:
+                gate_init = float(region_aware_cfg.get('gate_init', 0.0))
+                self.region_depth_gate = nn.Parameter(torch.tensor(gate_init, dtype=torch.float32))
+            else:
+                self.register_buffer('region_depth_gate', torch.tensor(1.0, dtype=torch.float32))
+        else:
+            self.region_geometry_head = None
+            self.register_buffer('region_depth_gate', torch.tensor(0.0, dtype=torch.float32))
         
         # prediction heads
         self.class_embed = nn.Linear(hidden_dim, num_classes)
@@ -125,7 +148,7 @@ class MonoDGP(nn.Module):
 
 
     def forward(self, images, calibs, targets, img_sizes, dn_args=None):
-        """ The forward expects a NestedTensor, which consists of:
+        """The forward expects a NestedTensor, which consists of:
                - samples.tensor: batched images, of shape [batch_size x 3 x H x W]
                - samples.mask: a binary mask of shape [batch_size x H x W], containing 1 on padded pixels
         """
@@ -212,7 +235,9 @@ class MonoDGP(nn.Module):
         outputs_classes = []
         outputs_3d_dims = []       
         outputs_depths = []
+        outputs_depths_base = []
         outputs_angles = []
+        region_geometry_outputs = []
 
         for lvl in range(hs.shape[0]):
             if lvl == 0:
@@ -242,11 +267,40 @@ class MonoDGP(nn.Module):
 
             # depth_geo_err
             depth_geo_err = self.depth_embed[lvl](hs[lvl])
-            
+
             # depth_geo
             box2d_height_norm = outputs_coord[:, :, 4] + outputs_coord[:, :, 5]
             box2d_height = torch.clamp(box2d_height_norm * img_sizes[:, 1: 2], min=1.0)
             depth_geo = size3d[:, :, 0]/ box2d_height * calibs[:, 0, 0].unsqueeze(1)
+            depth_base = torch.cat([depth_geo.unsqueeze(-1) + depth_geo_err[:, :, 0: 1],
+                                    depth_geo_err[:, :, 1: 2]], -1)
+
+            if self.region_geometry_head is not None:
+                region_mask = None
+                if self.region_aware_use_region_mask:
+                    region_mask = region_probs[1]
+
+                query_boxes_xyxy = box_ops.box_cxcylrtb_to_xyxy(outputs_coord).clamp(0.0, 1.0)
+                region_geometry = self.region_geometry_head(srcs[1], hs[lvl], query_boxes_xyxy, region_mask)
+                raw_region_depth_delta = (
+                    self.region_aware_output_scale * region_geometry['query_region_geometry_error']
+                )
+                if self.region_aware_use_learnable_gate:
+                    region_gate = torch.tanh(self.region_depth_gate)
+                else:
+                    region_gate = self.region_depth_gate
+                region_depth_delta = region_gate * raw_region_depth_delta
+                region_geometry['query_region_depth_delta_raw'] = raw_region_depth_delta
+                region_geometry['query_region_depth_delta'] = region_depth_delta
+                region_geometry['region_depth_gate'] = region_gate
+                region_geometry_outputs.append(region_geometry)
+                if region_depth_delta.shape[-1] == 1:
+                    depth_geo_err = torch.cat([
+                        depth_geo_err[:, :, 0:1] + region_depth_delta,
+                        depth_geo_err[:, :, 1:2],
+                    ], dim=-1)
+                else:
+                    depth_geo_err = depth_geo_err + region_depth_delta
             
             # depth_map
             # outputs_center3d = ((outputs_coord[..., :2] - 0.5) * 2).unsqueeze(2)   #.detach()
@@ -263,6 +317,7 @@ class MonoDGP(nn.Module):
                                     depth_geo_err[:, :, 1: 2]], -1)
 
             outputs_depths.append(depth_ave)
+            outputs_depths_base.append(depth_base)
 
             # angles
             outputs_angle = self.angle_embed[lvl](hs[lvl])
@@ -272,6 +327,7 @@ class MonoDGP(nn.Module):
         outputs_class = torch.stack(outputs_classes)
         outputs_3d_dim = torch.stack(outputs_3d_dims)
         outputs_depth = torch.stack(outputs_depths) 
+        outputs_depth_base = torch.stack(outputs_depths_base)
         outputs_angle = torch.stack(outputs_angles)
   
         out = dict()
@@ -279,9 +335,13 @@ class MonoDGP(nn.Module):
         out['pred_boxes'] = outputs_coord[-1]
         out['pred_3d_dim'] = outputs_3d_dim[-1]
         out['pred_depth'] = outputs_depth[-1]
+        out['pred_depth_base'] = outputs_depth_base[-1]
         out['pred_angle'] = outputs_angle[-1]
         out['pred_depth_map_logits'] = pred_depth_map_logits
         out['pred_region_prob'] = region_probs
+
+        if region_geometry_outputs:
+            out['pred_region_geometry'] = region_geometry_outputs[-1]
 
         out['inter_outputs'] = self._set_inter_loss(inter_class, inter_coord)
         
@@ -500,6 +560,23 @@ class SetCriterion(nn.Module):
 
         return losses
     
+    def loss_region_geometry(self, outputs, targets, indices, num_boxes):
+        pred_region_geometry = outputs.get('pred_region_geometry', None)
+        if pred_region_geometry is None:
+            zero = next(iter(outputs.values())).sum() * 0.0
+            return {'loss_region_geometry': zero}
+
+        idx = self._get_src_permutation_idx(indices)
+        region_delta = pred_region_geometry.get(
+            'query_region_depth_delta_raw',
+            pred_region_geometry['query_region_depth_delta'],
+        )[idx].squeeze(-1)
+        base_depth = outputs['pred_depth_base'][idx][:, 0]
+        target_depth = torch.cat([t['depth'][i] for t, (_, i) in zip(targets, indices)], dim=0).squeeze()
+        target_delta = target_depth - base_depth.detach()
+        loss = F.smooth_l1_loss(region_delta, target_delta, reduction='sum') / num_boxes
+        return {'loss_region_geometry': loss}
+    
     def _get_src_permutation_idx(self, indices):
         # permute predictions following indices
         batch_idx = torch.cat([torch.full_like(src, i) for i, (src, _) in enumerate(indices)])
@@ -524,6 +601,7 @@ class SetCriterion(nn.Module):
             'center': self.loss_3dcenter,
             'depth_map': self.loss_depth_map,
             'region': self.loss_region,
+            'region_geometry': self.loss_region_geometry,
         }
 
         assert loss in loss_map, f'do you really want to compute {loss} loss?'
@@ -563,7 +641,7 @@ class SetCriterion(nn.Module):
             for i, aux_outputs in enumerate(outputs['aux_outputs']):
                 indices = self.matcher(aux_outputs, targets, group_num=group_num)
                 for loss in self.losses:
-                    if loss == 'depth_map' or loss == 'region':
+                    if loss in ['depth_map', 'region', 'region_geometry']:
                         continue
                     kwargs = {}
                     if loss == 'labels':
@@ -612,7 +690,8 @@ def build(cfg):
         num_feature_levels=cfg['num_feature_levels'],
         with_box_refine=cfg['with_box_refine'],
         init_box=cfg['init_box'],
-        group_num=cfg['group_num'])
+        group_num=cfg['group_num'],
+        region_aware_cfg=cfg.get('region_aware', {}))
 
     # matcher
     matcher = build_matcher(cfg)
@@ -626,6 +705,14 @@ def build(cfg):
     weight_dict['loss_center'] = cfg['3dcenter_loss_coef']
     weight_dict['loss_depth_map'] = cfg['depth_map_loss_coef']
     weight_dict['loss_region'] = cfg['region_loss_coef']
+
+    region_aware_cfg = cfg.get('region_aware', {})
+    use_region_geometry_loss = (
+        region_aware_cfg.get('enabled', False)
+        and region_aware_cfg.get('use_region_loss', False)
+    )
+    if use_region_geometry_loss:
+        weight_dict['loss_region_geometry'] = region_aware_cfg.get('region_geometry_loss_coef', 0.05)
     
     if cfg['aux_loss']:
         aux_weight_dict = {}
@@ -643,6 +730,8 @@ def build(cfg):
         
     inter_losses = ['labels', 'boxes', 'center']
     losses = ['labels', 'boxes', 'cardinality', 'depths', 'dims', 'angles', 'center', 'depth_map', 'region']
+    if use_region_geometry_loss:
+        losses.append('region_geometry')
 
     criterion = SetCriterion(
         cfg['num_classes'],

@@ -26,7 +26,7 @@ dataset:
   depth_scale: 'normal'
 
 
-model_name: 'monodgp'
+model_name: 'v2_roi_grid3x3_gated_loss01'
 model:
   num_classes: 3
   return_intermediate_dec: True
@@ -89,14 +89,16 @@ model:
 
   # Region-aware geometry-error extension
   region_aware:
-    enabled: False
+    enabled: True
     grid_size: [3, 3]
     output_dim: 1
-    output_scale: 1.0
+    output_scale: 0.1
     use_depth_uncertainty: False
     use_region_mask: False
-    use_region_loss: False
-    region_geometry_loss_coef: 0.2
+    use_learnable_gate: True
+    gate_init: 0.0
+    use_region_loss: True
+    region_geometry_loss_coef: 0.1
 optimizer:
   type: 'adamw'
   lr: 0.0002
@@ -111,12 +113,12 @@ lr_scheduler:
 
 
 trainer:
-  max_epoch: 3
+  max_epoch: 20
   gpu_ids: '1'
   save_frequency: 1  # checkpoint save interval (in epoch)
   #resume_model: True
   #pretrain_model: path/to/ckpt
-  save_path: '../experiments/runs/debug_3ep/'
+  save_path: '../experiments/runs/v2_roi_grid3x3_gated_loss01/'
   save_all: False  # False for only savng the best and latest ckpts
   use_dn: False
   scalar: 5

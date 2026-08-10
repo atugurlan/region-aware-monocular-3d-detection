@@ -87,7 +87,16 @@ model:
   set_cost_giou: 2
   set_cost_3dcenter: 10
 
-
+  # Region-aware geometry-error extension
+  region_aware:
+    enabled: False
+    grid_size: [3, 3]
+    output_dim: 1
+    output_scale: 1.0
+    use_depth_uncertainty: False
+    use_region_mask: False
+    use_region_loss: False
+    region_geometry_loss_coef: 0.2
 optimizer:
   type: 'adamw'
   lr: 0.0002
