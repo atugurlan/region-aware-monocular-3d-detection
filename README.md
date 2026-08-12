@@ -1,41 +1,58 @@
 # Region-Aware Monocular 3D Detection
 
-This repository contains the implementation work for a dissertation project in monocular 3D object detection. It is based on [MonoDGP](https://github.com/PuFanqi23/MonoDGP), which is used as the baseline model.
+This repository contains the implementation work for a dissertation project in monocular 3D object detection. The project starts from [MonoDGP](https://github.com/PuFanqi23/MonoDGP), which is used as the baseline model.
 
-The dissertation direction is:
+The current dissertation direction is:
 
-> Region-aware uncertainty-guided geometry-error estimation for monocular 3D object detection.
+> Region-aware geometry-error estimation for monocular 3D object detection.
 
 ## Motivation
 
-Monocular 3D object detection is difficult because the model has to infer 3D geometry from a single RGB image. Depth, object location, size, and orientation are all ambiguous, especially for occluded, truncated, or distant objects.
+Monocular 3D object detection is difficult because the model has to estimate 3D location, size, orientation, and depth from a single RGB image. Depth is the most fragile part, especially when the object is far away, occluded, truncated, or only partly visible.
 
-MonoDGP addresses this problem using decoupled queries and geometry-error priors. This project keeps MonoDGP as the baseline and studies whether geometry error can be modeled more locally, at region level, instead of only at global object/query level.
+MonoDGP already models geometry error at object/query level. This project studies whether the geometry-error signal can be made more local. Instead of using only one global object representation, the model also looks at small regions inside the predicted 2D object box.
 
-The main hypothesis is that different regions of the same object may have different geometric reliability. Some regions may provide useful cues for the final 3D box, while others may be affected by occlusion, truncation, background noise, or uncertain depth.
+The main hypothesis is that not all regions of the same object are equally useful for depth estimation. Some regions may contain stronger geometric cues, while others may be affected by background, occlusion, truncation, or uncertain depth.
 
-## Proposed Direction
+## Current Implementation
 
-The proposed extension introduces a region-aware geometry-error estimation framework. For each predicted object query, the predicted 2D box is used as an ROI on the feature map. A small 2x2 or 3x3 grid is then pooled from inside that object area, and each local cell can contribute to a depth correction.
+The current branch adds a region-aware geometry module on top of MonoDGP. For each object query, the predicted 2D box is used as an ROI. ROIAlign extracts a small grid of features from inside that object region. The regional features are then used to predict a depth residual.
 
-These local signals can then be aggregated before the final 3D box prediction. Depth uncertainty and region masks may also be used to weight the contribution of each region.
+The first direct version was too aggressive because the residual was added directly to the depth prediction. The current implementation uses a learnable scalar gate initialized at zero. At the beginning of training, the model behaves like the MonoDGP baseline. During training, it can learn how much regional correction should be used.
 
-## Ablation Variants
+The regional depth branch is supervised as a residual between the target depth and the base MonoDGP depth prediction. This keeps the contribution focused on correcting depth, not replacing the whole detector.
 
-The first implementation stage is an ablation study with five variants. These variants are tested before choosing the next dissertation direction.
+## Current Experimental Status
 
-| Name | Description |
-| --- | --- |
-| Baseline | Original MonoDGP. |
-| V1 | ROI grid 2x2 region-aware depth geometry correction. |
-| V2 | ROI grid 3x3 region-aware depth geometry correction. |
-| V3 | ROI grid 3x3 + depth uncertainty weighting. |
-| V4 | ROI grid 3x3 + region-mask guidance. |
-| V5 | ROI grid 3x3 + depth uncertainty weighting + region-mask guidance. |
+The experiments are tracked in [docs/experiment_results.md](docs/experiment_results.md). The most important result so far is that a smaller regional loss coefficient works better than the initial value.
 
-The final model is not fixed in advance. V1-V5 should be compared first, then the next step should be chosen based on validation results, stability, and complexity.
+| Run | Description | Best AP3D Moderate | Status |
+| --- | --- | ---: | --- |
+| Baseline | Original MonoDGP, 20 epochs | 12.1207 | completed |
+| V2 direct ROI | ROI 3x3 correction without gate | 9.3288 | completed, worse than baseline |
+| V2 gated, loss 0.2 | ROI 3x3 correction with learnable gate | 10.9176 | completed, still below baseline |
+| V2.1 gated, loss 0.05 | Same architecture with weaker regional loss | 14.4722 | completed, current best |
+| V2.2 gated, loss 0.1 | Intermediate regional loss | 12.5843 | completed, better than baseline but worse than V2.1 |
 
-The current V1-V5 configs use a learnable depth gate. The gate starts from zero, so the model initially behaves like the MonoDGP baseline and only learns to use the regional depth correction if it is useful.
+At this stage, V2.1 is the strongest variant. It improves AP3D Moderate from 12.1207 to 14.4722 in the 20-epoch comparison.
+
+## Planned Ablations
+
+The original ablation idea was V1-V5. After the first results, the plan became more controlled: first stabilize the ROI-grid depth correction, then add uncertainty or mask guidance only if the simpler branch is useful.
+
+| Name | Description | Current role |
+| --- | --- | --- |
+| Baseline | Original MonoDGP | reference result |
+| V1 | ROI grid 2x2 depth geometry correction | optional size ablation |
+| V2 | ROI grid 3x3 depth geometry correction | main branch |
+| V2.1 | V2 with `region_geometry_loss_coef=0.05` | current best variant |
+| V2.2 | V2 with `region_geometry_loss_coef=0.1` | tuning comparison |
+| V3 | ROI grid 3x3 + depth uncertainty weighting | next possible extension |
+| V4 | ROI grid 3x3 + region-mask guidance | next possible extension |
+| V5 | ROI grid 3x3 + uncertainty + mask | only after V3/V4 are understood |
+
+Fallback variants are also documented in [docs/experiment_matrix.md](docs/experiment_matrix.md). They are useful if direct depth correction becomes unstable again.
+
 ## Repository Structure
 
 ```text
@@ -53,28 +70,15 @@ region-aware-monocular-3d-detection/
 |-- lib/
 |   `-- models/
 |       `-- monodgp/
-|           |-- region_seg_head.py
 |           |-- depth_predictor/
 |           |-- region_geometry/
+|           |-- region_seg_head.py
 |           `-- monodgp.py
 |-- tools/
 `-- README.md
 ```
 
-`region_geometry/` is reserved for the dissertation contribution. The baseline code remains in the original MonoDGP files until a variant is explicitly connected.
-
-Experiment results should be tracked in `docs/experiment_results.md` after every run.
-
-## Main Changes From Upstream MonoDGP
-
-The current repository includes compatibility updates needed to run MonoDGP on a newer local environment:
-
-- PyTorch 2.x compatibility updates for the custom CUDA attention extension.
-- CUDA architecture update for newer NVIDIA GPUs.
-- Updated imports for PyTorch internal API changes.
-- Numba compatibility fixes for KITTI evaluation.
-- Checkpoint loading update for newer `torch.load` behavior.
-- Debug and preliminary baseline configs.
+The dissertation contribution code is mainly placed under `lib/models/monodgp/region_geometry/` and connected inside the MonoDGP model.
 
 ## Dataset
 
@@ -96,7 +100,9 @@ disertation/
 |           |-- image_2/
 |           `-- calib/
 `-- experiments/
-    `-- runs/
+    |-- runs/
+    |-- metrics/
+    `-- visualizations/
 ```
 
 The default configs use:
@@ -133,7 +139,3 @@ This project is based on MonoDGP. If using this code or comparing with MonoDGP, 
 ## Acknowledgement
 
 This repository builds on the official MonoDGP implementation and its upstream dependency on MonoDETR.
-
-
-
-
