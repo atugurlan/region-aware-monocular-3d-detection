@@ -61,6 +61,8 @@ This is more flexible than the current scalar gate because each object can decid
 
 The third fallback is region-aware uncertainty. Instead of changing the depth value directly, the regional branch modifies depth confidence or log-variance. This may be safer because the model does not move the 3D box directly.
 
+V3 now implements the first version of this idea on top of V2.1. Each ROI grid cell predicts both a depth residual and an uncertainty value. The uncertainty lowers the aggregation weight of unreliable cells, and a small auxiliary uncertainty loss teaches the head to assign larger uncertainty to cells whose residual is far from the matched target residual.
+
 The fourth fallback is feature-level refinement. ROI features are fused back into the query feature, and then the existing depth head predicts depth from the refined query. This is a stronger architecture change, so it should come after the simpler variants are understood.
 
 ## Evaluation

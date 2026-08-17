@@ -67,6 +67,8 @@ class MonoDGP(nn.Module):
                 grid_size=region_aware_cfg.get('grid_size', [3, 3]),
                 output_dim=region_aware_cfg.get('output_dim', 1),
                 use_uncertainty=region_aware_cfg.get('use_depth_uncertainty', False),
+                uncertainty_temperature=region_aware_cfg.get('uncertainty_temperature', 1.0),
+                uncertainty_eps=region_aware_cfg.get('uncertainty_eps', 1e-4),
             )
             if self.region_aware_use_learnable_gate:
                 gate_init = float(region_aware_cfg.get('gate_init', 0.0))
@@ -285,10 +287,14 @@ class MonoDGP(nn.Module):
                 raw_region_depth_delta = (
                     self.region_aware_output_scale * region_geometry['query_region_geometry_error']
                 )
+                raw_region_depth_delta_cells = (
+                    self.region_aware_output_scale * region_geometry['region_geometry_error']
+                )
                 if self.region_aware_use_learnable_gate:
                     region_gate = torch.tanh(self.region_depth_gate)
                 else:
                     region_gate = self.region_depth_gate
+                region_geometry['region_depth_delta_raw_cells'] = raw_region_depth_delta_cells
                 region_depth_delta = region_gate * raw_region_depth_delta
                 region_geometry['query_region_depth_delta_raw'] = raw_region_depth_delta
                 region_geometry['query_region_depth_delta'] = region_depth_delta
@@ -373,7 +379,8 @@ class SetCriterion(nn.Module):
         1) we compute hungarian assignment between ground truth boxes and the outputs of the model
         2) we supervise each pair of matched ground-truth / prediction (supervise class and box)
     """
-    def __init__(self, num_classes, matcher, weight_dict, focal_alpha, losses, inter_losses, group_num=11):
+    def __init__(self, num_classes, matcher, weight_dict, focal_alpha, losses, inter_losses,
+                 group_num=11, region_uncertainty_target_max=10.0):
         """ Create the criterion.
         Parameters:
             num_classes: number of object categories, omitting the special no-object category
@@ -394,6 +401,7 @@ class SetCriterion(nn.Module):
         self.bce_noReduce = nn.BCELoss(reduction='none')
 
         self.group_num = group_num
+        self.region_uncertainty_target_max = region_uncertainty_target_max
 
     def loss_labels(self, outputs, targets, indices, num_boxes, log=True):
         """Classification loss (Binary focal loss)
@@ -575,7 +583,27 @@ class SetCriterion(nn.Module):
         target_depth = torch.cat([t['depth'][i] for t, (_, i) in zip(targets, indices)], dim=0).squeeze()
         target_delta = target_depth - base_depth.detach()
         loss = F.smooth_l1_loss(region_delta, target_delta, reduction='sum') / num_boxes
-        return {'loss_region_geometry': loss}
+        losses = {'loss_region_geometry': loss}
+
+        region_uncertainty = pred_region_geometry.get('region_uncertainty', None)
+        region_error = pred_region_geometry.get(
+            'region_depth_delta_raw_cells',
+            pred_region_geometry.get('region_geometry_error', None),
+        )
+        if region_uncertainty is not None and region_error is not None:
+            matched_region_uncertainty = region_uncertainty[idx].squeeze(-1)
+            matched_region_error = region_error[idx].squeeze(-1)
+            target_region_uncertainty = torch.abs(
+                matched_region_error.detach() - target_delta.unsqueeze(-1)
+            ).clamp(max=self.region_uncertainty_target_max)
+            uncertainty_loss = F.smooth_l1_loss(
+                matched_region_uncertainty,
+                target_region_uncertainty,
+                reduction='sum',
+            ) / num_boxes
+            losses['loss_region_uncertainty'] = uncertainty_loss
+
+        return losses
     
     def _get_src_permutation_idx(self, indices):
         # permute predictions following indices
@@ -713,6 +741,8 @@ def build(cfg):
     )
     if use_region_geometry_loss:
         weight_dict['loss_region_geometry'] = region_aware_cfg.get('region_geometry_loss_coef', 0.05)
+        if region_aware_cfg.get('use_depth_uncertainty', False):
+            weight_dict['loss_region_uncertainty'] = region_aware_cfg.get('region_uncertainty_loss_coef', 0.02)
     
     if cfg['aux_loss']:
         aux_weight_dict = {}
@@ -740,7 +770,8 @@ def build(cfg):
         focal_alpha=cfg['focal_alpha'],
         losses=losses,
         inter_losses=inter_losses,
-        group_num=cfg['group_num']
+        group_num=cfg['group_num'],
+        region_uncertainty_target_max=region_aware_cfg.get('region_uncertainty_target_max', 10.0),
         )
 
     device = torch.device(cfg['device'])

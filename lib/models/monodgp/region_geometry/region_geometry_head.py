@@ -12,11 +12,15 @@ class RegionAwareGeometryHead(nn.Module):
         grid_size=(3, 3),
         output_dim=1,
         use_uncertainty=False,
+        uncertainty_temperature=1.0,
+        uncertainty_eps=1e-4,
     ):
         super().__init__()
         self.grid_size = tuple(grid_size)
         self.output_dim = output_dim
         self.use_uncertainty = use_uncertainty
+        self.uncertainty_temperature = uncertainty_temperature
+        self.uncertainty_eps = uncertainty_eps
 
         self.region_encoder = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
@@ -88,8 +92,8 @@ class RegionAwareGeometryHead(nn.Module):
         if self.uncertainty_head is not None:
             region_uncertainty = torch.nn.functional.softplus(
                 self.uncertainty_head(region_features)
-            )
-            region_logits = region_logits - region_uncertainty.squeeze(-1)
+            ) + self.uncertainty_eps
+            region_logits = region_logits - self.uncertainty_temperature * region_uncertainty.squeeze(-1)
         else:
             region_uncertainty = None
 

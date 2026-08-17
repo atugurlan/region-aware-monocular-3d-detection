@@ -94,11 +94,15 @@ model:
     output_dim: 1
     output_scale: 0.1
     use_depth_uncertainty: True
+    uncertainty_temperature: 1.0
+    uncertainty_eps: 0.0001
     use_region_mask: False
     use_learnable_gate: True
     gate_init: 0.0
     use_region_loss: True
-    region_geometry_loss_coef: 0.2
+    region_geometry_loss_coef: 0.05
+    region_uncertainty_loss_coef: 0.005
+    region_uncertainty_target_max: 10.0
 optimizer:
   type: 'adamw'
   lr: 0.0002

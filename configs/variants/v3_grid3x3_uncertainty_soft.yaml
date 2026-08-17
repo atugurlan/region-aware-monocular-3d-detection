@@ -1,4 +1,4 @@
-random_seed: 444
+﻿random_seed: 444
 
 dataset:
   type: &dataset_type 'KITTI'
@@ -26,7 +26,7 @@ dataset:
   depth_scale: 'normal'
 
 
-model_name: 'v5_roi_grid3x3_uncertainty_mask_gated'
+model_name: 'v3_roi_grid3x3_uncertainty_soft_gated'
 model:
   num_classes: 3
   return_intermediate_dec: True
@@ -94,14 +94,14 @@ model:
     output_dim: 1
     output_scale: 0.1
     use_depth_uncertainty: True
-    uncertainty_temperature: 1.0
+    uncertainty_temperature: 0.5
     uncertainty_eps: 0.0001
-    use_region_mask: True
+    use_region_mask: False
     use_learnable_gate: True
     gate_init: 0.0
     use_region_loss: True
     region_geometry_loss_coef: 0.05
-    region_uncertainty_loss_coef: 0.005
+    region_uncertainty_loss_coef: 0.0
     region_uncertainty_target_max: 10.0
 optimizer:
   type: 'adamw'
@@ -122,7 +122,7 @@ trainer:
   save_frequency: 1  # checkpoint save interval (in epoch)
   #resume_model: True
   #pretrain_model: path/to/ckpt
-  save_path: '../experiments/runs/v5_roi_grid3x3_uncertainty_mask_gated/'
+  save_path: '../experiments/runs/v3_roi_grid3x3_uncertainty_soft_gated/'
   save_all: False  # False for only savng the best and latest ckpts
   use_dn: False
   scalar: 5
@@ -136,3 +136,4 @@ tester:
   checkpoint: 195  # the start ckpt epoch for 'all'
   threshold: 0.2  # confidence filter
   topk: 50
+

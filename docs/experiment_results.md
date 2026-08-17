@@ -22,9 +22,9 @@ This document tracks the baseline and region-aware experiments. It should be upd
 | V2 gated, loss 0.2 | `configs/variants/v2_grid3x3.yaml` | 20 | completed | 19 | 14.0715 | 10.9176 | 9.1391 | 55.6646 | 43.3007 | 38.0107 | Gate helped compared with direct ROI, but still below baseline. |
 | V2.1 gated, loss 0.05 | `configs/variants/v2_grid3x3_loss005.yaml` | 20 | completed | 20 | 19.8902 | 14.4722 | 11.7857 | 27.9416 | 19.9727 | 17.0827 | Current best variant. Improves AP3D Moderate by +2.3515 over baseline. |
 | V2.2 gated, loss 0.1 | `configs/variants/v2_grid3x3_loss01.yaml` | 20 | completed | 20 | 16.3276 | 12.5843 | 10.3751 | 24.7966 | 18.1860 | 15.4995 | Better than baseline, but weaker than V2.1. |
-| V3 | `configs/variants/v3_grid3x3_uncertainty.yaml` | TBD | not started | TBD | TBD | TBD | TBD | TBD | TBD | TBD | ROI 3x3 + uncertainty weighting. |
-| V4 | `configs/variants/v4_grid3x3_mask.yaml` | TBD | not started | TBD | TBD | TBD | TBD | TBD | TBD | TBD | ROI 3x3 + region-mask guidance. |
-| V5 | `configs/variants/v5_grid3x3_uncertainty_mask.yaml` | TBD | not started | TBD | TBD | TBD | TBD | TBD | TBD | TBD | ROI 3x3 + uncertainty + mask. |
+| V3 | `configs/variants/v3_grid3x3_uncertainty.yaml` | 20 | completed | 12 | 17.0721 | 12.4507 | 9.6186 | 24.6198 | 17.5752 | 14.2985 | Uncertainty weighting is slightly above baseline on Moderate, but below V2.1. |
+| V4 | `configs/variants/v4_grid3x3_mask.yaml` | 20 | completed | 17 | 15.9572 | 11.8357 | 9.3153 | 25.1234 | 17.9596 | 14.5451 | Mask guidance is below baseline and below V2.1/V3. |
+| V5 | `configs/variants/v5_grid3x3_uncertainty_mask.yaml` | 20 | completed | 13 | 13.6815 | 9.9023 | 8.0324 | 20.6197 | 14.9392 | 12.5606 | Combining uncertainty and mask is the weakest region-aware variant. |
 
 ## Current best result
 
@@ -122,6 +122,75 @@ Best result:
 
 This run is better than the baseline on AP3D Moderate and Hard, but it is clearly weaker than V2.1. The result supports the idea that the regional branch is useful, but it needs weak supervision. A coefficient of 0.05 is currently better than 0.1 and 0.2.
 
+## V3 ROI 3x3 + uncertainty weighting notes
+
+Config: `configs/variants/v3_grid3x3_uncertainty.yaml`
+
+Output folder: `../experiments/runs/v3_roi_grid3x3_uncertainty_gated/`
+
+Best result:
+
+- best epoch: 12;
+- 3D AP: Easy 17.0721, Moderate 12.4507, Hard 9.6186;
+- BEV AP: Easy 24.6198, Moderate 17.5752, Hard 14.2985;
+- 2D bbox AP: Easy 69.7210, Moderate 61.0293, Hard 54.3199.
+
+V3 is slightly better than the baseline on AP3D Moderate, but it is clearly below V2.1. This means the uncertainty weighting does not currently improve the best region-aware branch. The result is still useful as an ablation because it shows that adding uncertainty on top of the ROI correction is not automatically beneficial.
+
+Artifacts:
+
+- metrics CSV: `../experiments/metrics/v3_roi_grid3x3_uncertainty_gated_metrics.csv`;
+- projected 3D boxes: `../experiments/visualizations/v3_roi_grid3x3_uncertainty_gated/`;
+- baseline comparison images: `../experiments/visualizations/comparison_baseline_vs_v3_roi_grid3x3_uncertainty_gated/`;
+- V2.1 comparison images: `../experiments/visualizations/comparison_v2_loss005_vs_v3_roi_grid3x3_uncertainty_gated/`.
+
+## V4 ROI 3x3 + mask guidance notes
+
+Config: `configs/variants/v4_grid3x3_mask.yaml`
+
+Output folder: `../experiments/runs/v4_roi_grid3x3_mask_gated/`
+
+Best result:
+
+- best epoch: 17;
+- 3D AP: Easy 15.9572, Moderate 11.8357, Hard 9.3153;
+- BEV AP: Easy 25.1234, Moderate 17.9596, Hard 14.5451;
+- 2D bbox AP: Easy 86.0895, Moderate 75.6151, Hard 67.8422.
+
+V4 is weaker than the baseline on AP3D Moderate and clearly weaker than V2.1. It also does not improve over V3. The mask guidance may be too restrictive, or the region mask may remove useful ROI evidence before the regional depth residual is estimated. For the dissertation, this is a useful negative ablation because it suggests that simply masking ROI features is not enough.
+
+Artifacts:
+
+- metrics CSV: `../experiments/metrics/v4_roi_grid3x3_mask_gated_metrics.csv`;
+- projected 3D boxes: `../experiments/visualizations/v4_roi_grid3x3_mask_gated/`;
+- baseline comparison images: `../experiments/visualizations/comparison_baseline_vs_v4_roi_grid3x3_mask_gated/`;
+- V2.1 comparison images: `../experiments/visualizations/comparison_v2_loss005_vs_v4_roi_grid3x3_mask_gated/`;
+- V3 comparison images: `../experiments/visualizations/comparison_v3_vs_v4_roi_grid3x3_mask_gated/`.
+
+## V5 ROI 3x3 + uncertainty weighting + mask guidance notes
+
+Config: `configs/variants/v5_grid3x3_uncertainty_mask.yaml`
+
+Output folder: `../experiments/runs/v5_roi_grid3x3_uncertainty_mask_gated/`
+
+Best result:
+
+- best epoch: 13;
+- 3D AP: Easy 13.6815, Moderate 9.9023, Hard 8.0324;
+- BEV AP: Easy 20.6197, Moderate 14.9392, Hard 12.5606;
+- 2D bbox AP: Easy 78.3467, Moderate 68.5798, Hard 63.8607.
+
+V5 is the weakest of the tested region-aware variants. It is below the baseline and far below V2.1. Since V3 and V4 were already weaker than V2.1 separately, this result confirms that combining uncertainty weighting and mask guidance does not help in the current design. The likely issue is that the model receives two filtering mechanisms at once: uncertain cells are downweighted, and masked features are already reduced before the regional residual is estimated.
+
+Artifacts:
+
+- metrics CSV: `../experiments/metrics/v5_roi_grid3x3_uncertainty_mask_gated_metrics.csv`;
+- projected 3D boxes: `../experiments/visualizations/v5_roi_grid3x3_uncertainty_mask_gated/`;
+- baseline comparison images: `../experiments/visualizations/comparison_baseline_vs_v5_roi_grid3x3_uncertainty_mask_gated/`;
+- V2.1 comparison images: `../experiments/visualizations/comparison_v2_loss005_vs_v5_roi_grid3x3_uncertainty_mask_gated/`;
+- V3 comparison images: `../experiments/visualizations/comparison_v3_vs_v5_roi_grid3x3_uncertainty_mask_gated/`;
+- V4 comparison images: `../experiments/visualizations/comparison_v4_vs_v5_roi_grid3x3_uncertainty_mask_gated/`.
+
 ## Analysis artifacts per run
 
 For each completed run, save these artifacts:
@@ -131,17 +200,17 @@ For each completed run, save these artifacts:
 | Baseline | `../experiments/metrics/baseline_20ep_metrics.csv` | `../experiments/visualizations/baseline_20ep/` | used as reference |
 | V2.1 | `../experiments/metrics/v2_roi_grid3x3_gated_loss005_metrics.csv` | `../experiments/visualizations/v2_roi_grid3x3_gated_loss005/` | `../experiments/visualizations/comparison_baseline_vs_v2_roi_grid3x3_gated_loss005/` |
 | V2.2 | `../experiments/metrics/v2_roi_grid3x3_gated_loss01_metrics.csv` | `../experiments/visualizations/v2_roi_grid3x3_gated_loss01/` | TBD |
-| V3 | `../experiments/metrics/v3_roi_grid3x3_uncertainty_gated_metrics.csv` | `../experiments/visualizations/v3_roi_grid3x3_uncertainty_gated/` | TBD |
-| V4 | `../experiments/metrics/v4_roi_grid3x3_mask_gated_metrics.csv` | `../experiments/visualizations/v4_roi_grid3x3_mask_gated/` | TBD |
-| V5 | `../experiments/metrics/v5_roi_grid3x3_uncertainty_mask_gated_metrics.csv` | `../experiments/visualizations/v5_roi_grid3x3_uncertainty_mask_gated/` | TBD |
+| V3 | `../experiments/metrics/v3_roi_grid3x3_uncertainty_gated_metrics.csv` | `../experiments/visualizations/v3_roi_grid3x3_uncertainty_gated/` | `../experiments/visualizations/comparison_baseline_vs_v3_roi_grid3x3_uncertainty_gated/`, `../experiments/visualizations/comparison_v2_loss005_vs_v3_roi_grid3x3_uncertainty_gated/` |
+| V4 | `../experiments/metrics/v4_roi_grid3x3_mask_gated_metrics.csv` | `../experiments/visualizations/v4_roi_grid3x3_mask_gated/` | `../experiments/visualizations/comparison_baseline_vs_v4_roi_grid3x3_mask_gated/`, `../experiments/visualizations/comparison_v2_loss005_vs_v4_roi_grid3x3_mask_gated/`, `../experiments/visualizations/comparison_v3_vs_v4_roi_grid3x3_mask_gated/` |
+| V5 | `../experiments/metrics/v5_roi_grid3x3_uncertainty_mask_gated_metrics.csv` | `../experiments/visualizations/v5_roi_grid3x3_uncertainty_mask_gated/` | `../experiments/visualizations/comparison_baseline_vs_v5_roi_grid3x3_uncertainty_mask_gated/`, `../experiments/visualizations/comparison_v2_loss005_vs_v5_roi_grid3x3_uncertainty_mask_gated/`, `../experiments/visualizations/comparison_v3_vs_v5_roi_grid3x3_uncertainty_mask_gated/`, `../experiments/visualizations/comparison_v4_vs_v5_roi_grid3x3_uncertainty_mask_gated/` |
 
 ## Next steps
 
-1. Parse the V2.2 log into a metrics CSV if it has not been parsed yet.
-2. Generate projected 3D box visualizations for V2.2.
-3. Compare baseline, V2.1, and V2.2 using the same image IDs.
-4. Keep V2.1 as the current reference variant.
-5. Decide whether to run V3 uncertainty weighting next or first run V2.1 for more epochs.
+1. Keep V2.1 as the current reference variant.
+2. Compare V2.1, V3, and V4 visually on the same image IDs.
+3. Keep V2.1 as the strongest current variant.
+4. Stop adding combined modules for now because V3, V4, and V5 are all weaker than V2.1.
+5. Focus the final direction on V2.1 plus deeper analysis, visual failure cases, and possibly longer training or multi-class evaluation.
 
 ## Dissertation interpretation
 

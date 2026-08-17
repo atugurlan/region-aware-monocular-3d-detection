@@ -11,9 +11,11 @@ This file tracks the dissertation implementation stage. The original plan was Ba
 | V2 | 3x3 ROI-grid depth geometry correction with learnable gate | `../experiments/runs/v2_roi_grid3x3_gated/` | completed, below baseline |
 | V2.1 | V2 with regional loss coefficient 0.05 | `../experiments/runs/v2_roi_grid3x3_gated_loss005/` | completed, current best |
 | V2.2 | V2 with regional loss coefficient 0.1 | `../experiments/runs/v2_roi_grid3x3_gated_loss01/` | completed, better than baseline but below V2.1 |
-| V3 | 3x3 ROI-grid correction with depth uncertainty weighting | `../experiments/runs/v3_roi_grid3x3_uncertainty_gated/` | not started |
-| V4 | 3x3 ROI-grid correction with region-mask guidance | `../experiments/runs/v4_roi_grid3x3_mask_gated/` | not started |
-| V5 | 3x3 ROI-grid correction with uncertainty weighting and mask guidance | `../experiments/runs/v5_roi_grid3x3_uncertainty_mask_gated/` | not started |
+| V3 | 3x3 ROI-grid correction with depth uncertainty weighting | `../experiments/runs/v3_roi_grid3x3_uncertainty_gated/` | completed; below V2.1 |
+| V3.1 | V3 with softer uncertainty weighting and no uncertainty auxiliary loss | `../experiments/runs/v3_roi_grid3x3_uncertainty_soft_gated/` | ready to run |
+| V4 | 3x3 ROI-grid correction with region-mask guidance | `../experiments/runs/v4_roi_grid3x3_mask_gated/` | completed; below baseline |
+| V4.1 | V4 with regional loss coefficient 0.05 | `../experiments/runs/v4_roi_grid3x3_mask_gated_loss005/` | ready to run |
+| V5 | 3x3 ROI-grid correction with uncertainty weighting and mask guidance | `../experiments/runs/v5_roi_grid3x3_uncertainty_mask_gated/` | completed; weakest region-aware variant |
 
 ## Fallback experiments
 
@@ -28,12 +30,13 @@ This file tracks the dissertation implementation stage. The original plan was Ba
 
 V2.1 is currently the strongest branch. It should be used as the reference region-aware model for the next stage.
 
-The next decision is between two paths:
+The current decision is to keep V2.1 as the main dissertation variant. V3, V4, and V5 are useful ablations, but they do not improve the best ROI-grid correction. Before fully rejecting uncertainty and mask guidance, two fairer follow-up configs should be checked: V3.1 and V4.1.
 
-1. Train V2.1 for more epochs to check if the improvement remains stable.
-2. Start V3 and add uncertainty weighting on top of the stable V2.1 idea.
+The next useful paths are:
 
-V5 should not be rushed. It combines multiple changes, so it will be harder to explain if the result improves or drops. V3 and V4 should be tested separately first.
+1. Run V4.1 first, because original V4 used a stronger regional loss than V2.1.
+2. Run V3.1 if there is time, because original V3 may have been hurt by the auxiliary uncertainty loss.
+3. If V3.1 and V4.1 remain below V2.1, stop adding modules and train/analyze V2.1 more deeply.
 
 ## Implementation note
 
