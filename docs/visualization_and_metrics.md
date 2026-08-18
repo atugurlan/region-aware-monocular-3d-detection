@@ -174,3 +174,36 @@ The generated plots are:
 - `../experiments/plots/variant_comparison_ap3d_moderate.png`
 - `../experiments/plots/variant_comparison_moderate_metrics.png`
 - `../experiments/plots/variant_best_metrics_summary.md`
+
+
+## 8. Current V7.1 artifacts
+
+V7.1 was visualized after the 20-epoch run with:
+
+```powershell
+python -B tools/visualize_kitti_predictions.py `
+  --data_root ../data/kitti `
+  --pred_dir ../experiments/runs/v7_roi_grid3x3_region_reliability_aux/v7_roi_grid3x3_region_reliability_aux/outputs/data `
+  --out_dir ../experiments/visualizations/v7_roi_grid3x3_region_reliability_aux `
+  --max_images 20
+```
+
+Generated folders:
+
+- `../experiments/visualizations/v7_roi_grid3x3_region_reliability_aux/`
+- `../experiments/visualizations/comparison_baseline_vs_v7_1_region_reliability_aux/`
+- `../experiments/visualizations/comparison_v2_loss005_vs_v7_1_region_reliability_aux/`
+- `../experiments/visualizations/comparison_v6_vs_v7_1_region_reliability_aux/`
+
+The V7.1 metric CSV is:
+
+```text
+../experiments/metrics/v7_roi_grid3x3_region_reliability_aux_metrics.csv
+```
+
+The generated plots are:
+
+- `../experiments/plots/v7_1_region_reliability_aux_training_curve.png`
+- `../experiments/plots/variant_comparison_ap3d_moderate.png`
+- `../experiments/plots/variant_comparison_moderate_metrics.png`
+- `../experiments/plots/variant_best_metrics_summary.md`

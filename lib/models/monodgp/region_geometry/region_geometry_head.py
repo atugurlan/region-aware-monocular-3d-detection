@@ -17,6 +17,9 @@ class RegionAwareGeometryHead(nn.Module):
         fusion_type="logit",
         use_query_gate=False,
         gate_init=0.0,
+        use_reliability=False,
+        reliability_mode="auxiliary_only",
+        reliability_logit_scale=1.0,
     ):
         super().__init__()
         self.grid_size = tuple(grid_size)
@@ -26,6 +29,9 @@ class RegionAwareGeometryHead(nn.Module):
         self.uncertainty_eps = uncertainty_eps
         self.fusion_type = fusion_type
         self.use_query_gate = use_query_gate
+        self.use_reliability = use_reliability
+        self.reliability_mode = reliability_mode
+        self.reliability_logit_scale = reliability_logit_scale
 
         self.region_encoder = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
@@ -53,6 +59,15 @@ class RegionAwareGeometryHead(nn.Module):
             nn.init.constant_(self.query_depth_gate[-1].bias, gate_init)
         else:
             self.query_depth_gate = None
+
+        if use_reliability:
+            self.reliability_head = nn.Sequential(
+                nn.Linear(hidden_dim, hidden_dim),
+                nn.ReLU(inplace=True),
+                nn.Linear(hidden_dim, 1),
+            )
+        else:
+            self.reliability_head = None
 
         if use_uncertainty:
             self.uncertainty_head = nn.Sequential(
@@ -126,6 +141,15 @@ class RegionAwareGeometryHead(nn.Module):
         else:
             region_logits = self.query_region_logits(query_features)
 
+        if self.reliability_head is not None:
+            region_reliability_logits = self.reliability_head(region_features)
+            region_reliability = torch.sigmoid(region_reliability_logits)
+            if self.reliability_mode == "logit_bias":
+                region_logits = region_logits + self.reliability_logit_scale * region_reliability.squeeze(-1)
+        else:
+            region_reliability_logits = None
+            region_reliability = None
+
         if self.uncertainty_head is not None:
             region_uncertainty = torch.nn.functional.softplus(
                 self.uncertainty_head(region_features)
@@ -145,6 +169,10 @@ class RegionAwareGeometryHead(nn.Module):
 
         if self.query_depth_gate is not None:
             output["query_region_depth_gate"] = torch.tanh(self.query_depth_gate(query_features))
+
+        if region_reliability is not None:
+            output["region_reliability"] = region_reliability
+            output["region_reliability_logits"] = region_reliability_logits
 
         if region_uncertainty is not None:
             output["region_uncertainty"] = region_uncertainty
