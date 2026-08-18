@@ -16,6 +16,7 @@ This file tracks the dissertation implementation stage. The original plan was Ba
 | V4 | 3x3 ROI-grid correction with region-mask guidance | `../experiments/runs/v4_roi_grid3x3_mask_gated/` | completed; below baseline |
 | V4.1 | V4 with regional loss coefficient 0.05 | `../experiments/runs/v4_roi_grid3x3_mask_gated_loss005/` | completed; better than V4, below V2.1 |
 | V5 | 3x3 ROI-grid correction with uncertainty weighting and mask guidance | `../experiments/runs/v5_roi_grid3x3_uncertainty_mask_gated/` | completed; weakest region-aware variant |
+| V6 | Adaptive query-region fusion with query-level depth gate | `../experiments/runs/v6_roi_grid3x3_adaptive_region_fusion/` | completed; below baseline and V2.1 |
 
 ## Fallback experiments
 
@@ -36,12 +37,16 @@ The next useful paths are:
 
 1. Keep V2.1 as the main experimental result for the first stage.
 2. Use V3, V3.1, V4, V4.1, and V5 as ablations that explain what did not help.
-3. Move toward query-dependent adaptive fusion and region-level reliability as the stronger research direction.
+3. Treat V6 as evidence that a more expressive fusion block alone does not solve the depth correction problem.
+4. Keep V2.1 as the stable result for the first stage.
+5. Move next toward region-level reliability or safer auxiliary supervision, because V6 improved the fusion design but not AP3D.
 
 ## Implementation note
 
 The current variants use ROIAlign on the predicted 2D object box for each object query. This is different from the first historical attempt, where the grid was pooled globally from the feature map. The ROI version is closer to the dissertation idea because the regions are actually inside the estimated object area.
 
 The regional depth correction is multiplied by a learnable gate initialized at zero. This avoids forcing a weak regional head into the depth prediction too early in training.
+
+V6 changes this gate and aggregation strategy. Instead of using only query-level logits over the region grid and one global scalar gate, V6 predicts region weights from the interaction between each object query and each ROI cell. It also predicts a gate per query, so different detected objects can use different amounts of regional correction. The 20-epoch result did not improve AP3D over V2.1, so this design is useful as an ablation rather than as the final candidate.
 
 The most important comparison is not only whether AP improves. The experiments should also show how the model changes failure cases. A useful variant should improve AP3D without making projected 3D boxes visibly worse on common KITTI examples.

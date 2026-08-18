@@ -27,6 +27,7 @@ This document tracks the baseline and region-aware experiments. It should be upd
 | V4 | `configs/variants/v4_grid3x3_mask.yaml` | 20 | completed | 17 | 15.9572 | 11.8357 | 9.3153 | 25.1234 | 17.9596 | 14.5451 | Mask guidance is below baseline and below V2.1/V3. |
 | V4.1 | `configs/variants/v4_grid3x3_mask_loss005.yaml` | 20 | completed | 19 | 18.7841 | 13.6364 | 10.9500 | 27.3974 | 19.4732 | 16.2057 | Fair mask run with loss 0.05. Better than baseline and V4, but still below V2.1. |
 | V5 | `configs/variants/v5_grid3x3_uncertainty_mask.yaml` | 20 | completed | 13 | 13.6815 | 9.9023 | 8.0324 | 20.6197 | 14.9392 | 12.5606 | Combining uncertainty and mask is the weakest region-aware variant. |
+| V6 | `configs/variants/v6_adaptive_region_fusion.yaml` | 20 | completed | 20 | 14.1765 | 11.5201 | 9.4688 | 22.5077 | 17.6326 | 14.8261 | Adaptive fusion improves the design, but not AP3D. It is below baseline and V2.1. |
 
 ## Current best result
 
@@ -246,6 +247,30 @@ Artifacts:
 - V3 comparison images: `../experiments/visualizations/comparison_v3_vs_v5_roi_grid3x3_uncertainty_mask_gated/`;
 - V4 comparison images: `../experiments/visualizations/comparison_v4_vs_v5_roi_grid3x3_uncertainty_mask_gated/`.
 
+## V6 ROI 3x3 + adaptive query-region fusion notes
+
+Config: `configs/variants/v6_adaptive_region_fusion.yaml`
+
+Output folder: `../experiments/runs/v6_roi_grid3x3_adaptive_region_fusion/`
+
+Best result:
+
+- best epoch: 20;
+- 3D AP: Easy 14.1765, Moderate 11.5201, Hard 9.4688;
+- BEV AP: Easy 22.5077, Moderate 17.6326, Hard 14.8261;
+- 2D bbox AP: Easy 84.2021, Moderate 77.1912, Hard 70.3618.
+
+V6 tested whether the ROI-grid correction becomes stronger if the model learns region weights from the interaction between the object query and each local ROI cell. It also replaced the single scalar gate with a query-level depth gate. The result is not better than V2.1 and is slightly below the baseline on AP3D Moderate. The 2D box metric is strong, especially on Moderate and Hard, but the 3D depth correction does not benefit enough from the more expressive fusion. This suggests that the current problem is not only how regions are aggregated. The next design should focus more directly on whether each region is reliable for depth correction, or on using the regional branch as an auxiliary signal instead of always injecting a depth residual.
+
+Artifacts:
+
+- metrics CSV: `../experiments/metrics/v6_roi_grid3x3_adaptive_region_fusion_metrics.csv`;
+- projected 3D boxes: `../experiments/visualizations/v6_roi_grid3x3_adaptive_region_fusion/`;
+- baseline comparison images: `../experiments/visualizations/comparison_baseline_vs_v6_adaptive_region_fusion/`;
+- V2.1 comparison images: `../experiments/visualizations/comparison_v2_loss005_vs_v6_adaptive_region_fusion/`;
+- V4.1 comparison images: `../experiments/visualizations/comparison_v4_loss005_vs_v6_adaptive_region_fusion/`;
+- training curve: `../experiments/plots/v6_adaptive_region_fusion_training_curve.png`.
+
 ## Analysis artifacts per run
 
 For each completed run, save these artifacts:
@@ -260,14 +285,15 @@ For each completed run, save these artifacts:
 | V3.1 | `../experiments/metrics/v3_roi_grid3x3_uncertainty_soft_gated_metrics.csv` | `../experiments/visualizations/v3_roi_grid3x3_uncertainty_soft_gated/` | `../experiments/visualizations/comparison_baseline_vs_v3_1_soft_uncertainty/`, `../experiments/visualizations/comparison_v2_loss005_vs_v3_1_soft_uncertainty/`, `../experiments/visualizations/comparison_v3_vs_v3_1_soft_uncertainty/` |
 | V4.1 | `../experiments/metrics/v4_roi_grid3x3_mask_gated_loss005_metrics.csv` | `../experiments/visualizations/v4_roi_grid3x3_mask_gated_loss005/` | `../experiments/visualizations/comparison_baseline_vs_v4_roi_grid3x3_mask_gated_loss005/`, `../experiments/visualizations/comparison_v2_loss005_vs_v4_roi_grid3x3_mask_gated_loss005/`, `../experiments/visualizations/comparison_v4_vs_v4_loss005/` |
 | V5 | `../experiments/metrics/v5_roi_grid3x3_uncertainty_mask_gated_metrics.csv` | `../experiments/visualizations/v5_roi_grid3x3_uncertainty_mask_gated/` | `../experiments/visualizations/comparison_baseline_vs_v5_roi_grid3x3_uncertainty_mask_gated/`, `../experiments/visualizations/comparison_v2_loss005_vs_v5_roi_grid3x3_uncertainty_mask_gated/`, `../experiments/visualizations/comparison_v3_vs_v5_roi_grid3x3_uncertainty_mask_gated/`, `../experiments/visualizations/comparison_v4_vs_v5_roi_grid3x3_uncertainty_mask_gated/` |
+| V6 | `../experiments/metrics/v6_roi_grid3x3_adaptive_region_fusion_metrics.csv` | `../experiments/visualizations/v6_roi_grid3x3_adaptive_region_fusion/` | `../experiments/visualizations/comparison_baseline_vs_v6_adaptive_region_fusion/`, `../experiments/visualizations/comparison_v2_loss005_vs_v6_adaptive_region_fusion/`, `../experiments/visualizations/comparison_v4_loss005_vs_v6_adaptive_region_fusion/` |
 
 ## Next steps
 
 1. Keep V2.1 as the current reference region-aware variant.
 2. Treat V3.1 as evidence that softer uncertainty weighting does not fix the uncertainty branch.
 3. Treat V4.1 as evidence that weaker regional supervision helps mask guidance, but that mask guidance is still below V2.1.
-4. Stop adding simple filtering modules for the next stage and move toward query-dependent adaptive fusion / region reliability.
-5. Use V2.1 and the negative ablations as the basis for deeper visual failure-case analysis.
+4. Treat V6 as evidence that adaptive query-region fusion alone is not enough to improve AP3D.
+5. Move next toward region-level reliability or auxiliary-only regional supervision, while keeping V2.1 as the strongest completed result.
 
 ## Dissertation interpretation
 

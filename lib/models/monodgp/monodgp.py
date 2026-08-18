@@ -69,6 +69,9 @@ class MonoDGP(nn.Module):
                 use_uncertainty=region_aware_cfg.get('use_depth_uncertainty', False),
                 uncertainty_temperature=region_aware_cfg.get('uncertainty_temperature', 1.0),
                 uncertainty_eps=region_aware_cfg.get('uncertainty_eps', 1e-4),
+                fusion_type=region_aware_cfg.get('fusion_type', 'logit'),
+                use_query_gate=region_aware_cfg.get('use_query_gate', False),
+                gate_init=float(region_aware_cfg.get('gate_init', 0.0)),
             )
             if self.region_aware_use_learnable_gate:
                 gate_init = float(region_aware_cfg.get('gate_init', 0.0))
@@ -290,7 +293,9 @@ class MonoDGP(nn.Module):
                 raw_region_depth_delta_cells = (
                     self.region_aware_output_scale * region_geometry['region_geometry_error']
                 )
-                if self.region_aware_use_learnable_gate:
+                if 'query_region_depth_gate' in region_geometry:
+                    region_gate = region_geometry['query_region_depth_gate']
+                elif self.region_aware_use_learnable_gate:
                     region_gate = torch.tanh(self.region_depth_gate)
                 else:
                     region_gate = self.region_depth_gate

@@ -14,6 +14,9 @@ class RegionAwareGeometryHead(nn.Module):
         use_uncertainty=False,
         uncertainty_temperature=1.0,
         uncertainty_eps=1e-4,
+        fusion_type="logit",
+        use_query_gate=False,
+        gate_init=0.0,
     ):
         super().__init__()
         self.grid_size = tuple(grid_size)
@@ -21,6 +24,8 @@ class RegionAwareGeometryHead(nn.Module):
         self.use_uncertainty = use_uncertainty
         self.uncertainty_temperature = uncertainty_temperature
         self.uncertainty_eps = uncertainty_eps
+        self.fusion_type = fusion_type
+        self.use_query_gate = use_query_gate
 
         self.region_encoder = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
@@ -28,6 +33,26 @@ class RegionAwareGeometryHead(nn.Module):
             nn.Linear(hidden_dim, output_dim),
         )
         self.query_region_logits = nn.Linear(hidden_dim, self.grid_size[0] * self.grid_size[1])
+
+        if fusion_type == "adaptive":
+            self.adaptive_region_logits = nn.Sequential(
+                nn.Linear(hidden_dim * 3, hidden_dim),
+                nn.ReLU(inplace=True),
+                nn.Linear(hidden_dim, 1),
+            )
+        else:
+            self.adaptive_region_logits = None
+
+        if use_query_gate:
+            self.query_depth_gate = nn.Sequential(
+                nn.Linear(hidden_dim, hidden_dim),
+                nn.ReLU(inplace=True),
+                nn.Linear(hidden_dim, output_dim),
+            )
+            nn.init.zeros_(self.query_depth_gate[-1].weight)
+            nn.init.constant_(self.query_depth_gate[-1].bias, gate_init)
+        else:
+            self.query_depth_gate = None
 
         if use_uncertainty:
             self.uncertainty_head = nn.Sequential(
@@ -87,7 +112,19 @@ class RegionAwareGeometryHead(nn.Module):
         )
 
         region_error = self.region_encoder(region_features)
-        region_logits = self.query_region_logits(query_features)
+        if self.adaptive_region_logits is not None:
+            query_region_features = query_features.unsqueeze(2).expand_as(region_features)
+            fusion_features = torch.cat(
+                [
+                    region_features,
+                    query_region_features,
+                    region_features * query_region_features,
+                ],
+                dim=-1,
+            )
+            region_logits = self.adaptive_region_logits(fusion_features).squeeze(-1)
+        else:
+            region_logits = self.query_region_logits(query_features)
 
         if self.uncertainty_head is not None:
             region_uncertainty = torch.nn.functional.softplus(
@@ -105,6 +142,9 @@ class RegionAwareGeometryHead(nn.Module):
             "region_weights": region_weights,
             "query_region_geometry_error": query_region_error,
         }
+
+        if self.query_depth_gate is not None:
+            output["query_region_depth_gate"] = torch.tanh(self.query_depth_gate(query_features))
 
         if region_uncertainty is not None:
             output["region_uncertainty"] = region_uncertainty
