@@ -33,8 +33,11 @@ The experiments are tracked in [docs/experiment_results.md](docs/experiment_resu
 | V2 gated, loss 0.2 | ROI 3x3 correction with learnable gate | 10.9176 | completed, still below baseline |
 | V2.1 gated, loss 0.05 | Same architecture with weaker regional loss | 14.4722 | completed, current best |
 | V2.2 gated, loss 0.1 | Intermediate regional loss | 12.5843 | completed, better than baseline but worse than V2.1 |
+| V3 uncertainty | ROI 3x3 with uncertainty weighting | 12.4507 | completed, below V2.1 |
+| V3.1 soft uncertainty | V3 without auxiliary uncertainty loss | 10.9410 | completed, worse than V3 and baseline |
+| V4.1 mask, loss 0.05 | Fair mask-guidance comparison | 13.6364 | completed, better than V4/baseline but worse than V2.1 |
 
-At this stage, V2.1 is the strongest variant. It improves AP3D Moderate from 12.1207 to 14.4722 in the 20-epoch comparison.
+At this stage, V2.1 is still the strongest variant. V4.1 shows that lowering the mask-guidance loss helps, but the mask branch remains below the simpler V2.1 ROI-grid correction. V3.1 shows that simply softening uncertainty weighting does not solve the uncertainty branch; it drops below both V3 and the baseline.
 
 ## Planned Ablations
 
@@ -47,9 +50,11 @@ The original ablation idea was V1-V5. After the first results, the plan became m
 | V2 | ROI grid 3x3 depth geometry correction | main branch |
 | V2.1 | V2 with `region_geometry_loss_coef=0.05` | current best variant |
 | V2.2 | V2 with `region_geometry_loss_coef=0.1` | tuning comparison |
-| V3 | ROI grid 3x3 + depth uncertainty weighting | next possible extension |
-| V4 | ROI grid 3x3 + region-mask guidance | next possible extension |
-| V5 | ROI grid 3x3 + uncertainty + mask | only after V3/V4 are understood |
+| V3 | ROI grid 3x3 + depth uncertainty weighting | completed, below V2.1 |
+| V3.1 | softer uncertainty weighting, no auxiliary uncertainty loss | completed, worse than V3 and baseline |
+| V4 | ROI grid 3x3 + region-mask guidance | completed, below baseline |
+| V4.1 | V4 with loss coefficient 0.05 | completed, better than V4 but below V2.1 |
+| V5 | ROI grid 3x3 + uncertainty + mask | completed, weakest region-aware variant |
 
 Fallback variants are also documented in [docs/experiment_matrix.md](docs/experiment_matrix.md). They are useful if direct depth correction becomes unstable again.
 

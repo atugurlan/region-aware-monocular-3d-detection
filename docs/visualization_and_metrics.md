@@ -64,3 +64,80 @@ After V1-V5 are run, the CSV files can be combined to plot:
 - separate Easy / Moderate / Hard comparison.
 
 The visual analysis should use the same selected image IDs for Baseline and V1-V5. This makes the comparison easier to explain in the dissertation.
+
+## 4. Current V4.1 artifacts
+
+V4.1 was visualized after the 20-epoch run with:
+
+```powershell
+python -B tools/visualize_kitti_predictions.py `
+  --data_root ../data/kitti `
+  --pred_dir ../experiments/runs/v4_roi_grid3x3_mask_gated_loss005/v4_roi_grid3x3_mask_gated_loss005/outputs/data `
+  --out_dir ../experiments/visualizations/v4_roi_grid3x3_mask_gated_loss005 `
+  --max_images 20
+```
+
+Generated folders:
+
+- `../experiments/visualizations/v4_roi_grid3x3_mask_gated_loss005/`
+- `../experiments/visualizations/comparison_baseline_vs_v4_roi_grid3x3_mask_gated_loss005/`
+- `../experiments/visualizations/comparison_v2_loss005_vs_v4_roi_grid3x3_mask_gated_loss005/`
+- `../experiments/visualizations/comparison_v4_vs_v4_loss005/`
+
+The V4.1 metric CSV is:
+
+```text
+../experiments/metrics/v4_roi_grid3x3_mask_gated_loss005_metrics.csv
+```
+
+
+## 5. Current V3.1 artifacts
+
+V3.1 was visualized after the 20-epoch run with:
+
+```powershell
+python -B tools/visualize_kitti_predictions.py `
+  --data_root ../data/kitti `
+  --pred_dir ../experiments/runs/v3_roi_grid3x3_uncertainty_soft_gated/v3_roi_grid3x3_uncertainty_soft_gated/outputs/data `
+  --out_dir ../experiments/visualizations/v3_roi_grid3x3_uncertainty_soft_gated `
+  --max_images 20
+```
+
+Generated folders:
+
+- `../experiments/visualizations/v3_roi_grid3x3_uncertainty_soft_gated/`
+- `../experiments/visualizations/comparison_baseline_vs_v3_1_soft_uncertainty/`
+- `../experiments/visualizations/comparison_v2_loss005_vs_v3_1_soft_uncertainty/`
+- `../experiments/visualizations/comparison_v3_vs_v3_1_soft_uncertainty/`
+
+The V3.1 metric CSV is:
+
+```text
+../experiments/metrics/v3_roi_grid3x3_uncertainty_soft_gated_metrics.csv
+```
+
+The generated plots are:
+
+- `../experiments/plots/v3_1_soft_uncertainty_training_curve.png`
+- `../experiments/plots/variant_comparison_ap3d_moderate.png`
+- `../experiments/plots/variant_comparison_moderate_metrics.png`
+- `../experiments/plots/variant_best_metrics_summary.md`
+
+
+## 6. Current V2.2 artifacts
+
+V2.2 was visualized after the 20-epoch run with:
+
+```powershell
+python -B tools/visualize_kitti_predictions.py `
+  --data_root ../data/kitti `
+  --pred_dir ../experiments/runs/v2_roi_grid3x3_gated_loss01/v2_roi_grid3x3_gated_loss01/outputs/data `
+  --out_dir ../experiments/visualizations/v2_roi_grid3x3_gated_loss01 `
+  --max_images 20
+```
+
+Generated folders:
+
+- `../experiments/visualizations/v2_roi_grid3x3_gated_loss01/`
+- `../experiments/visualizations/comparison_baseline_vs_v2_roi_grid3x3_gated_loss01/`
+- `../experiments/visualizations/comparison_v2_loss005_vs_v2_loss01/`
