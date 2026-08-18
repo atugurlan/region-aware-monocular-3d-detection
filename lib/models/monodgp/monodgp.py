@@ -72,6 +72,9 @@ class MonoDGP(nn.Module):
                 fusion_type=region_aware_cfg.get('fusion_type', 'logit'),
                 use_query_gate=region_aware_cfg.get('use_query_gate', False),
                 gate_init=float(region_aware_cfg.get('gate_init', 0.0)),
+                use_reliability=region_aware_cfg.get('use_region_reliability', False),
+                reliability_mode=region_aware_cfg.get('reliability_mode', 'auxiliary_only'),
+                reliability_logit_scale=region_aware_cfg.get('reliability_logit_scale', 1.0),
             )
             if self.region_aware_use_learnable_gate:
                 gate_init = float(region_aware_cfg.get('gate_init', 0.0))
@@ -608,6 +611,21 @@ class SetCriterion(nn.Module):
             ) / num_boxes
             losses['loss_region_uncertainty'] = uncertainty_loss
 
+        region_reliability = pred_region_geometry.get('region_reliability', None)
+        if region_reliability is not None and region_error is not None:
+            matched_region_reliability = region_reliability[idx].squeeze(-1)
+            matched_region_error = region_error[idx].squeeze(-1)
+            reliability_error = torch.abs(
+                matched_region_error.detach() - target_delta.unsqueeze(-1)
+            )
+            target_region_reliability = 1.0 / (1.0 + reliability_error)
+            reliability_loss = F.smooth_l1_loss(
+                matched_region_reliability,
+                target_region_reliability,
+                reduction='sum',
+            ) / num_boxes
+            losses['loss_region_reliability'] = reliability_loss
+
         return losses
     
     def _get_src_permutation_idx(self, indices):
@@ -748,6 +766,8 @@ def build(cfg):
         weight_dict['loss_region_geometry'] = region_aware_cfg.get('region_geometry_loss_coef', 0.05)
         if region_aware_cfg.get('use_depth_uncertainty', False):
             weight_dict['loss_region_uncertainty'] = region_aware_cfg.get('region_uncertainty_loss_coef', 0.02)
+        if region_aware_cfg.get('use_region_reliability', False):
+            weight_dict['loss_region_reliability'] = region_aware_cfg.get('region_reliability_loss_coef', 0.01)
     
     if cfg['aux_loss']:
         aux_weight_dict = {}

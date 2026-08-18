@@ -37,8 +37,9 @@ The experiments are tracked in [docs/experiment_results.md](docs/experiment_resu
 | V3.1 soft uncertainty | V3 without auxiliary uncertainty loss | 10.9410 | completed, worse than V3 and baseline |
 | V4.1 mask, loss 0.05 | Fair mask-guidance comparison | 13.6364 | completed, better than V4/baseline but worse than V2.1 |
 | V6 adaptive fusion | Query-dependent region fusion and query-level gate | 11.5201 | completed, below baseline and V2.1 |
+| V7.1 reliability aux | Region reliability auxiliary-only | 10.7080 | completed, below baseline and V2.1 |
 
-At this stage, V2.1 is still the strongest completed variant. V4.1 shows that lowering the mask-guidance loss helps, but the mask branch remains below the simpler V2.1 ROI-grid correction. V3.1 shows that simply softening uncertainty weighting does not solve the uncertainty branch; it drops below both V3 and the baseline. V6 tested adaptive query-region fusion and a query-level gate, but it also stayed below V2.1. This means the next stronger direction should focus on region reliability or safer auxiliary supervision, not only a more expressive fusion block.
+At this stage, V2.1 is still the strongest completed variant. V4.1 shows that lowering the mask-guidance loss helps, but the mask branch remains below the simpler V2.1 ROI-grid correction. V3.1 shows that simply softening uncertainty weighting does not solve the uncertainty branch; it drops below both V3 and the baseline. V6 tested adaptive query-region fusion and a query-level gate, but it also stayed below V2.1. V7.1 tested region reliability as auxiliary supervision, but it also stayed below V2.1. This means the next stronger direction should either improve the reliability formulation or move toward a more complete region-token transformer module.
 
 ## Planned Ablations
 

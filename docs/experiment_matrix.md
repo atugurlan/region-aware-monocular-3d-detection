@@ -17,6 +17,7 @@ This file tracks the dissertation implementation stage. The original plan was Ba
 | V4.1 | V4 with regional loss coefficient 0.05 | `../experiments/runs/v4_roi_grid3x3_mask_gated_loss005/` | completed; better than V4, below V2.1 |
 | V5 | 3x3 ROI-grid correction with uncertainty weighting and mask guidance | `../experiments/runs/v5_roi_grid3x3_uncertainty_mask_gated/` | completed; weakest region-aware variant |
 | V6 | Adaptive query-region fusion with query-level depth gate | `../experiments/runs/v6_roi_grid3x3_adaptive_region_fusion/` | completed; below baseline and V2.1 |
+| V7.1 | Region reliability head with auxiliary-only supervision | `../experiments/runs/v7_roi_grid3x3_region_reliability_aux/` | completed; below baseline and V2.1 |
 
 ## Fallback experiments
 
@@ -39,7 +40,8 @@ The next useful paths are:
 2. Use V3, V3.1, V4, V4.1, and V5 as ablations that explain what did not help.
 3. Treat V6 as evidence that a more expressive fusion block alone does not solve the depth correction problem.
 4. Keep V2.1 as the stable result for the first stage.
-5. Move next toward region-level reliability or safer auxiliary supervision, because V6 improved the fusion design but not AP3D.
+5. Treat V7.1 as evidence that auxiliary reliability alone does not improve AP3D in the current design.
+6. Move next toward V7.2 only if reliability should be injected directly, or toward V8 if a stronger architecture is preferred.
 
 ## Implementation note
 
@@ -48,5 +50,7 @@ The current variants use ROIAlign on the predicted 2D object box for each object
 The regional depth correction is multiplied by a learnable gate initialized at zero. This avoids forcing a weak regional head into the depth prediction too early in training.
 
 V6 changes this gate and aggregation strategy. Instead of using only query-level logits over the region grid and one global scalar gate, V6 predicts region weights from the interaction between each object query and each ROI cell. It also predicts a gate per query, so different detected objects can use different amounts of regional correction. The 20-epoch result did not improve AP3D over V2.1, so this design is useful as an ablation rather than as the final candidate.
+
+V7.1 returns to the simpler V2.1 correction path and adds a reliability head per ROI cell. Reliability is supervised with a target derived from the error between each cell residual and the matched object-level depth residual. The first V7 version is auxiliary-only, so it should not destabilize final depth unless the extra supervision changes the shared region features too much. The 20-epoch result is below V2.1, which means this auxiliary signal is not enough by itself.
 
 The most important comparison is not only whether AP improves. The experiments should also show how the model changes failure cases. A useful variant should improve AP3D without making projected 3D boxes visibly worse on common KITTI examples.

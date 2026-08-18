@@ -28,6 +28,7 @@ This document tracks the baseline and region-aware experiments. It should be upd
 | V4.1 | `configs/variants/v4_grid3x3_mask_loss005.yaml` | 20 | completed | 19 | 18.7841 | 13.6364 | 10.9500 | 27.3974 | 19.4732 | 16.2057 | Fair mask run with loss 0.05. Better than baseline and V4, but still below V2.1. |
 | V5 | `configs/variants/v5_grid3x3_uncertainty_mask.yaml` | 20 | completed | 13 | 13.6815 | 9.9023 | 8.0324 | 20.6197 | 14.9392 | 12.5606 | Combining uncertainty and mask is the weakest region-aware variant. |
 | V6 | `configs/variants/v6_adaptive_region_fusion.yaml` | 20 | completed | 20 | 14.1765 | 11.5201 | 9.4688 | 22.5077 | 17.6326 | 14.8261 | Adaptive fusion improves the design, but not AP3D. It is below baseline and V2.1. |
+| V7.1 | `configs/variants/v7_region_reliability_aux.yaml` | 20 | completed | 19 | 14.3914 | 10.7080 | 8.6103 | 22.6127 | 16.5019 | 13.4920 | Reliability auxiliary-only is below baseline and V2.1. |
 
 ## Current best result
 
@@ -271,6 +272,30 @@ Artifacts:
 - V4.1 comparison images: `../experiments/visualizations/comparison_v4_loss005_vs_v6_adaptive_region_fusion/`;
 - training curve: `../experiments/plots/v6_adaptive_region_fusion_training_curve.png`.
 
+## V7.1 ROI 3x3 + region reliability auxiliary-only notes
+
+Config: `configs/variants/v7_region_reliability_aux.yaml`
+
+Output folder: `../experiments/runs/v7_roi_grid3x3_region_reliability_aux/`
+
+Best result:
+
+- best epoch: 19;
+- 3D AP: Easy 14.3914, Moderate 10.7080, Hard 8.6103;
+- BEV AP: Easy 22.6127, Moderate 16.5019, Hard 13.4920;
+- 2D bbox AP: Easy 81.1360, Moderate 72.4465, Hard 66.3892.
+
+V7.1 added a region reliability head per ROI cell and trained it with an auxiliary target derived from the local residual error. The reliability output was not used to change final depth. This was intentionally safer than V7.2, because previous variants showed that direct depth modification can reduce AP3D. The result is below the baseline and below V2.1, so auxiliary reliability alone is not enough in the current form. It is still useful as an ablation because it shows that simply asking the model to predict reliable regions does not automatically improve the shared region features.
+
+Artifacts:
+
+- metrics CSV: `../experiments/metrics/v7_roi_grid3x3_region_reliability_aux_metrics.csv`;
+- projected 3D boxes: `../experiments/visualizations/v7_roi_grid3x3_region_reliability_aux/`;
+- baseline comparison images: `../experiments/visualizations/comparison_baseline_vs_v7_1_region_reliability_aux/`;
+- V2.1 comparison images: `../experiments/visualizations/comparison_v2_loss005_vs_v7_1_region_reliability_aux/`;
+- V6 comparison images: `../experiments/visualizations/comparison_v6_vs_v7_1_region_reliability_aux/`;
+- training curve: `../experiments/plots/v7_1_region_reliability_aux_training_curve.png`.
+
 ## Analysis artifacts per run
 
 For each completed run, save these artifacts:
@@ -286,6 +311,7 @@ For each completed run, save these artifacts:
 | V4.1 | `../experiments/metrics/v4_roi_grid3x3_mask_gated_loss005_metrics.csv` | `../experiments/visualizations/v4_roi_grid3x3_mask_gated_loss005/` | `../experiments/visualizations/comparison_baseline_vs_v4_roi_grid3x3_mask_gated_loss005/`, `../experiments/visualizations/comparison_v2_loss005_vs_v4_roi_grid3x3_mask_gated_loss005/`, `../experiments/visualizations/comparison_v4_vs_v4_loss005/` |
 | V5 | `../experiments/metrics/v5_roi_grid3x3_uncertainty_mask_gated_metrics.csv` | `../experiments/visualizations/v5_roi_grid3x3_uncertainty_mask_gated/` | `../experiments/visualizations/comparison_baseline_vs_v5_roi_grid3x3_uncertainty_mask_gated/`, `../experiments/visualizations/comparison_v2_loss005_vs_v5_roi_grid3x3_uncertainty_mask_gated/`, `../experiments/visualizations/comparison_v3_vs_v5_roi_grid3x3_uncertainty_mask_gated/`, `../experiments/visualizations/comparison_v4_vs_v5_roi_grid3x3_uncertainty_mask_gated/` |
 | V6 | `../experiments/metrics/v6_roi_grid3x3_adaptive_region_fusion_metrics.csv` | `../experiments/visualizations/v6_roi_grid3x3_adaptive_region_fusion/` | `../experiments/visualizations/comparison_baseline_vs_v6_adaptive_region_fusion/`, `../experiments/visualizations/comparison_v2_loss005_vs_v6_adaptive_region_fusion/`, `../experiments/visualizations/comparison_v4_loss005_vs_v6_adaptive_region_fusion/` |
+| V7.1 | `../experiments/metrics/v7_roi_grid3x3_region_reliability_aux_metrics.csv` | `../experiments/visualizations/v7_roi_grid3x3_region_reliability_aux/` | `../experiments/visualizations/comparison_baseline_vs_v7_1_region_reliability_aux/`, `../experiments/visualizations/comparison_v2_loss005_vs_v7_1_region_reliability_aux/`, `../experiments/visualizations/comparison_v6_vs_v7_1_region_reliability_aux/` |
 
 ## Next steps
 
@@ -293,7 +319,7 @@ For each completed run, save these artifacts:
 2. Treat V3.1 as evidence that softer uncertainty weighting does not fix the uncertainty branch.
 3. Treat V4.1 as evidence that weaker regional supervision helps mask guidance, but that mask guidance is still below V2.1.
 4. Treat V6 as evidence that adaptive query-region fusion alone is not enough to improve AP3D.
-5. Move next toward region-level reliability or auxiliary-only regional supervision, while keeping V2.1 as the strongest completed result.
+5. Treat V7.1 as an auxiliary reliability ablation. V2.1 remains the strongest completed result. The next step should be either V7.2 reliability-weighted residual or V8 region-token transformer.
 
 ## Dissertation interpretation
 
