@@ -296,6 +296,30 @@ Artifacts:
 - V6 comparison images: `../experiments/visualizations/comparison_v6_vs_v7_1_region_reliability_aux/`;
 - training curve: `../experiments/plots/v7_1_region_reliability_aux_training_curve.png`.
 
+## V7.2 ROI 3x3 + reliability-guided region weighting notes
+
+Config: `configs/variants/v7_region_reliability_weighted.yaml`
+
+Output folder: `../experiments/runs/v7_roi_grid3x3_region_reliability_weighted/`
+
+Best result:
+
+- best epoch: 19;
+- 3D AP: Easy 18.4688, Moderate 13.1804, Hard 10.9630;
+- BEV AP: Easy 26.5431, Moderate 19.1961, Hard 16.2526;
+- 2D bbox AP: Easy 81.1603, Moderate 74.9691, Hard 67.8467.
+
+V7.2 uses the same reliability head as V7.1, but the reliability score is no longer only an auxiliary output. It is added as a bias to the region logits before the softmax that combines ROI cells. This means the model can give more weight to local regions that it predicts as more reliable. The result is much stronger than V7.1 and also better than the original MonoDGP baseline on AP3D Moderate. However, it is still below V2.1, so the simple gated ROI residual remains the strongest completed variant.
+
+This result is useful for the dissertation because it separates two conclusions. First, reliability as auxiliary supervision alone is weak. Second, reliability becomes useful when it is connected to the actual regional aggregation. The remaining problem is that weighting ROI cells is probably not enough; the next version should test reliability as a gate on the final regional depth correction.
+
+Artifacts:
+
+- metrics CSV: `../experiments/metrics/v7_roi_grid3x3_region_reliability_weighted_metrics.csv`;
+- projected 3D boxes: `../experiments/visualizations/v7_roi_grid3x3_region_reliability_weighted/`;
+- comparison images: `../experiments/visualizations/comparison_baseline_v2_1_v7_1_v7_2/`;
+- metric summary: `../experiments/plots/v7_2_metric_summary.md`.
+
 ## Analysis artifacts per run
 
 For each completed run, save these artifacts:
@@ -312,6 +336,7 @@ For each completed run, save these artifacts:
 | V5 | `../experiments/metrics/v5_roi_grid3x3_uncertainty_mask_gated_metrics.csv` | `../experiments/visualizations/v5_roi_grid3x3_uncertainty_mask_gated/` | `../experiments/visualizations/comparison_baseline_vs_v5_roi_grid3x3_uncertainty_mask_gated/`, `../experiments/visualizations/comparison_v2_loss005_vs_v5_roi_grid3x3_uncertainty_mask_gated/`, `../experiments/visualizations/comparison_v3_vs_v5_roi_grid3x3_uncertainty_mask_gated/`, `../experiments/visualizations/comparison_v4_vs_v5_roi_grid3x3_uncertainty_mask_gated/` |
 | V6 | `../experiments/metrics/v6_roi_grid3x3_adaptive_region_fusion_metrics.csv` | `../experiments/visualizations/v6_roi_grid3x3_adaptive_region_fusion/` | `../experiments/visualizations/comparison_baseline_vs_v6_adaptive_region_fusion/`, `../experiments/visualizations/comparison_v2_loss005_vs_v6_adaptive_region_fusion/`, `../experiments/visualizations/comparison_v4_loss005_vs_v6_adaptive_region_fusion/` |
 | V7.1 | `../experiments/metrics/v7_roi_grid3x3_region_reliability_aux_metrics.csv` | `../experiments/visualizations/v7_roi_grid3x3_region_reliability_aux/` | `../experiments/visualizations/comparison_baseline_vs_v7_1_region_reliability_aux/`, `../experiments/visualizations/comparison_v2_loss005_vs_v7_1_region_reliability_aux/`, `../experiments/visualizations/comparison_v6_vs_v7_1_region_reliability_aux/` |
+| V7.2 | `../experiments/metrics/v7_roi_grid3x3_region_reliability_weighted_metrics.csv` | `../experiments/visualizations/v7_roi_grid3x3_region_reliability_weighted/` | `../experiments/visualizations/comparison_baseline_v2_1_v7_1_v7_2/` |
 
 ## Next steps
 
@@ -319,7 +344,9 @@ For each completed run, save these artifacts:
 2. Treat V3.1 as evidence that softer uncertainty weighting does not fix the uncertainty branch.
 3. Treat V4.1 as evidence that weaker regional supervision helps mask guidance, but that mask guidance is still below V2.1.
 4. Treat V6 as evidence that adaptive query-region fusion alone is not enough to improve AP3D.
-5. Treat V7.1 as an auxiliary reliability ablation. V2.1 remains the strongest completed result. The next step should be either V7.2 reliability-weighted residual or V8 region-token transformer.
+5. Treat V7.1 as an auxiliary reliability ablation.
+6. Treat V7.2 as the first useful reliability variant because it beats the baseline, even though V2.1 remains stronger.
+7. Try V7.3 reliability-gated depth delta before jumping to a larger V8 module.
 
 ## Dissertation interpretation
 

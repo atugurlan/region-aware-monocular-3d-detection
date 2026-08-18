@@ -15,7 +15,8 @@ The initial plan was to run V1-V5 in order. After the first experiments, the pla
 4. Keep the best V2 tuning as the reference region-aware model.
 5. Only after that, test uncertainty and mask variants.
 6. Treat V6 as an adaptive-fusion ablation.
-7. Use V7.1 as the next reliability experiment, starting from the stable V2.1 path.
+7. Use V7.1 as the first reliability experiment, starting from the stable V2.1 path.
+8. Use V7.2 only after V7.1, because V7.2 lets reliability change the region weights directly.
 
 ## Config list
 
@@ -32,6 +33,7 @@ The initial plan was to run V1-V5 in order. After the first experiments, the pla
 | `v5_grid3x3_uncertainty_mask.yaml` | V2 + uncertainty + mask | only useful after V3/V4 are checked |
 | `v6_adaptive_region_fusion.yaml` | V2.1 + adaptive query-region fusion | completed; below V2.1 |
 | `v7_region_reliability_aux.yaml` | V2.1 + auxiliary region reliability head | next reliability experiment |
+| `v7_region_reliability_weighted.yaml` | V2.1 + reliability-guided region weighting | V7.2; reliability changes the region aggregation |
 
 All current variants use ROIAlign on the predicted 2D object box. The grid is pooled from inside the object ROI, not globally from the full feature map.
 
@@ -46,5 +48,7 @@ V3 adds an uncertainty head for each cell in the ROI grid. Regions with higher p
 `v6_adaptive_region_fusion.yaml` keeps the stable parts of V2.1: ROI grid 3x3, `region_geometry_loss_coef=0.05`, and weak depth residual correction. The difference is that the region weights are predicted from both the object query and each local region feature. It also uses a query-dependent depth gate instead of only one global scalar gate. The result is below V2.1, so V6 is treated as an ablation.
 
 `v7_region_reliability_aux.yaml` starts again from the V2.1 path and adds a reliability head for every ROI cell. The first version is auxiliary-only: reliability is supervised, but it does not change the final depth prediction yet. This checks whether the model can learn which local regions are useful for depth correction before using reliability to modify depth.
+
+`v7_region_reliability_weighted.yaml` is the direct follow-up to V7.1. It keeps the same reliability target, but uses the predicted reliability as a bias on the region logits before softmax. In simple terms, reliable ROI cells should receive more weight when the regional depth correction is computed.
 
 For fair comparison, use the same dataset split, the same epoch count, and the same visualization image IDs.

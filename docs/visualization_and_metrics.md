@@ -207,3 +207,25 @@ The generated plots are:
 - `../experiments/plots/variant_comparison_ap3d_moderate.png`
 - `../experiments/plots/variant_comparison_moderate_metrics.png`
 - `../experiments/plots/variant_best_metrics_summary.md`
+
+
+## 9. Current V7.2 artifacts
+
+V7.2 was visualized after the 20-epoch run with:
+
+```powershell
+python -B tools/visualize_kitti_predictions.py `
+  --data_root ../data/kitti `
+  --pred_dir ../experiments/runs/v7_roi_grid3x3_region_reliability_weighted/v7_roi_grid3x3_region_reliability_weighted/outputs/data `
+  --out_dir ../experiments/visualizations/v7_roi_grid3x3_region_reliability_weighted `
+  --score_threshold 0.2 `
+  --class_name Car `
+  --image_ids "34,87,129,135,206,280,330,365,376,450"
+```
+
+Generated folders and files:
+
+- `../experiments/visualizations/v7_roi_grid3x3_region_reliability_weighted/`
+- `../experiments/visualizations/comparison_baseline_v2_1_v7_1_v7_2/`
+- `../experiments/metrics/v7_roi_grid3x3_region_reliability_weighted_metrics.csv`
+- `../experiments/plots/v7_2_metric_summary.md`

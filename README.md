@@ -38,8 +38,9 @@ The experiments are tracked in [docs/experiment_results.md](docs/experiment_resu
 | V4.1 mask, loss 0.05 | Fair mask-guidance comparison | 13.6364 | completed, better than V4/baseline but worse than V2.1 |
 | V6 adaptive fusion | Query-dependent region fusion and query-level gate | 11.5201 | completed, below baseline and V2.1 |
 | V7.1 reliability aux | Region reliability auxiliary-only | 10.7080 | completed, below baseline and V2.1 |
+| V7.2 reliability weighted | Reliability-guided ROI-cell weighting | 13.1804 | completed, better than baseline/V7.1 but below V2.1 |
 
-At this stage, V2.1 is still the strongest completed variant. V4.1 shows that lowering the mask-guidance loss helps, but the mask branch remains below the simpler V2.1 ROI-grid correction. V3.1 shows that simply softening uncertainty weighting does not solve the uncertainty branch; it drops below both V3 and the baseline. V6 tested adaptive query-region fusion and a query-level gate, but it also stayed below V2.1. V7.1 tested region reliability as auxiliary supervision, but it also stayed below V2.1. This means the next stronger direction should either improve the reliability formulation or move toward a more complete region-token transformer module.
+At this stage, V2.1 is still the strongest completed variant. V4.1 shows that lowering the mask-guidance loss helps, but the mask branch remains below the simpler V2.1 ROI-grid correction. V3.1 shows that simply softening uncertainty weighting does not solve the uncertainty branch; it drops below both V3 and the baseline. V6 tested adaptive query-region fusion and a query-level gate, but it also stayed below V2.1. V7.1 tested region reliability as auxiliary supervision, but it also stayed below V2.1. V7.2 is better: using reliability directly in the region weighting recovers most of the gap and beats the baseline, but it still does not beat V2.1.
 
 ## Planned Ablations
 
@@ -58,6 +59,8 @@ The original ablation idea was V1-V5. After the first results, the plan became m
 | V4.1 | V4 with loss coefficient 0.05 | completed, better than V4 but below V2.1 |
 | V5 | ROI grid 3x3 + uncertainty + mask | completed, weakest region-aware variant |
 | V6 | ROI grid 3x3 + adaptive query-region fusion | completed, below V2.1 |
+| V7.1 | ROI grid 3x3 + auxiliary reliability prediction | completed, below V2.1 |
+| V7.2 | ROI grid 3x3 + reliability-guided region weighting | completed, better than baseline/V7.1 but below V2.1 |
 
 Fallback variants are also documented in [docs/experiment_matrix.md](docs/experiment_matrix.md). They are useful if direct depth correction becomes unstable again.
 
