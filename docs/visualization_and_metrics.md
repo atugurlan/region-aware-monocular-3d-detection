@@ -141,3 +141,36 @@ Generated folders:
 - `../experiments/visualizations/v2_roi_grid3x3_gated_loss01/`
 - `../experiments/visualizations/comparison_baseline_vs_v2_roi_grid3x3_gated_loss01/`
 - `../experiments/visualizations/comparison_v2_loss005_vs_v2_loss01/`
+
+
+## 7. Current V6 artifacts
+
+V6 was visualized after the 20-epoch run with:
+
+```powershell
+python -B tools/visualize_kitti_predictions.py `
+  --data_root ../data/kitti `
+  --pred_dir ../experiments/runs/v6_roi_grid3x3_adaptive_region_fusion/v6_roi_grid3x3_adaptive_region_fusion/outputs/data `
+  --out_dir ../experiments/visualizations/v6_roi_grid3x3_adaptive_region_fusion `
+  --max_images 20
+```
+
+Generated folders:
+
+- `../experiments/visualizations/v6_roi_grid3x3_adaptive_region_fusion/`
+- `../experiments/visualizations/comparison_baseline_vs_v6_adaptive_region_fusion/`
+- `../experiments/visualizations/comparison_v2_loss005_vs_v6_adaptive_region_fusion/`
+- `../experiments/visualizations/comparison_v4_loss005_vs_v6_adaptive_region_fusion/`
+
+The V6 metric CSV is:
+
+```text
+../experiments/metrics/v6_roi_grid3x3_adaptive_region_fusion_metrics.csv
+```
+
+The generated plots are:
+
+- `../experiments/plots/v6_adaptive_region_fusion_training_curve.png`
+- `../experiments/plots/variant_comparison_ap3d_moderate.png`
+- `../experiments/plots/variant_comparison_moderate_metrics.png`
+- `../experiments/plots/variant_best_metrics_summary.md`
