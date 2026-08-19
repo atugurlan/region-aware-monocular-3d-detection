@@ -17,7 +17,7 @@ Example for the baseline:
 ```powershell
 python -B tools/visualize_kitti_predictions.py `
   --data_root ../data/kitti `
-  --pred_dir ../experiments/runs/baseline_20ep/monodgp/outputs/data `
+  --pred_dir ../experiments/runs/baseline_20ep/monodgp/outputs/data
   --out_dir ../experiments/visualizations/baseline_20ep `
   --max_images 20
 ```
@@ -255,6 +255,31 @@ Generated folders and files:
 - `../experiments/metrics/v7_roi_grid3x3_region_reliability_delta_gate_rerun_metrics.csv`
 
 
-## 11. Next artifact to generate
+## 12. Next artifact to generate
 
 The next run to visualize should be V7.4 if the soft delta gate experiment is executed. Use the same image IDs as V7.2 and V7.3 so the qualitative comparison stays easy to read.
+
+## 11. Current V7.4 artifacts
+
+V7.4 was visualized after the 20-epoch run with:
+
+```powershell
+python -B tools/visualize_kitti_predictions.py `
+  --data_root ../data/kitti `
+  --pred_dir ../experiments/runs/v7_roi_grid3x3_region_reliability_soft_delta_gate/v7_roi_grid3x3_region_reliability_soft_delta_gate/outputs/data `
+  --out_dir ../experiments/visualizations/v7_roi_grid3x3_region_reliability_soft_delta_gate `
+  --max_images 20 `
+  --score_threshold 0.2 `
+  --class_name Car
+```
+
+Generated folders and files:
+
+- `../experiments/visualizations/v7_roi_grid3x3_region_reliability_soft_delta_gate/`
+- `../experiments/visualizations/comparison_baseline_v2_1_v7_2_v7_3_v7_4/`
+- `../experiments/metrics/v7_roi_grid3x3_region_reliability_soft_delta_gate_metrics.csv`
+
+
+## 12. Next artifact to generate
+
+If a new architecture is tested next, use the same selected examples from the V7.4 comparison folder. This keeps the qualitative comparison consistent across Baseline, V2.1, V7.2, V7.3, V7.4, and the next candidate.

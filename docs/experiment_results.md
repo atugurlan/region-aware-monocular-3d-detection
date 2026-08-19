@@ -31,7 +31,7 @@ This document tracks the baseline and region-aware experiments. It should be upd
 | V7.1 | `configs/variants/v7_region_reliability_aux.yaml` | 20 | completed | 19 | 14.3914 | 10.7080 | 8.6103 | 22.6127 | 16.5019 | 13.4920 | Reliability auxiliary-only is below baseline and V2.1. |
 | V7.2 | `configs/variants/v7_region_reliability_weighted.yaml` | 20 | completed | 19 | 18.4688 | 13.1804 | 10.9630 | 26.5431 | 19.1961 | 16.2526 | Best reliability variant so far; better than baseline but below V2.1. |
 | V7.3 | `configs/variants/v7_region_reliability_delta_gate.yaml` | 20 | completed/rerun | 19 | 14.9893 | 11.1904 | 8.8537 | 22.3250 | 16.7252 | 13.6817 | Negative ablation; direct reliability gate on depth delta is too restrictive. |
-| V7.4 | `configs/variants/v7_region_reliability_soft_delta_gate.yaml` | 20 | ready | TBD | TBD | TBD | TBD | TBD | TBD | TBD | Soft delta gate prepared to test a less aggressive version of V7.3. |
+| V7.4 | `configs/variants/v7_region_reliability_soft_delta_gate.yaml` | 20 | completed | 19 | 15.3549 | 11.2016 | 9.2032 | 23.2514 | 16.7522 | 13.8070 | Slightly better than V7.3, but still below baseline, V7.2, and V2.1. |
 
 ## Current best result
 
@@ -347,6 +347,29 @@ Artifacts:
 - projected 3D boxes: `../experiments/visualizations/v7_roi_grid3x3_region_reliability_delta_gate/`;
 - comparison images: `../experiments/visualizations/comparison_baseline_v2_1_v7_2_v7_3/`.
 
+
+## V7.4 ROI 3x3 + soft reliability-gated depth delta notes
+
+Config: `configs/variants/v7_region_reliability_soft_delta_gate.yaml`
+
+Output folder: `../experiments/runs/v7_roi_grid3x3_region_reliability_soft_delta_gate/`
+
+Best result:
+
+- best epoch: 19;
+- 3D AP: Easy 15.3549, Moderate 11.2016, Hard 9.2032;
+- BEV AP: Easy 23.2514, Moderate 16.7522, Hard 13.8070;
+- 2D bbox AP: Easy 81.2342, Moderate 71.1319, Hard 65.0686.
+
+V7.4 was introduced to soften the direct gate from V7.3. Instead of multiplying the regional depth delta by a reliability value in `[0, 1]`, the model uses a centered scale around 1.0. This means reliability can reduce or increase the regional correction only mildly. The result is slightly better than V7.3 on AP3D Moderate, but the gain is very small: 11.2016 compared with 11.1904. It is still below the baseline and clearly below V7.2 and V2.1.
+
+The conclusion is that softening the gate avoids the most aggressive behavior, but it does not make final-delta reliability gating useful enough. The best reliability design remains V7.2, where reliability changes ROI-cell aggregation before the regional residual is computed. V7.4 should be kept as a controlled negative/near-neutral ablation, not as a candidate for longer training.
+
+Artifacts:
+
+- metrics CSV: `../experiments/metrics/v7_roi_grid3x3_region_reliability_soft_delta_gate_metrics.csv`;
+- projected 3D boxes: `../experiments/visualizations/v7_roi_grid3x3_region_reliability_soft_delta_gate/`;
+- comparison images: `../experiments/visualizations/comparison_baseline_v2_1_v7_2_v7_3_v7_4/`.
 ## Analysis artifacts per run
 
 For each completed run, save these artifacts:
@@ -365,6 +388,7 @@ For each completed run, save these artifacts:
 | V7.1 | `../experiments/metrics/v7_roi_grid3x3_region_reliability_aux_metrics.csv` | `../experiments/visualizations/v7_roi_grid3x3_region_reliability_aux/` | `../experiments/visualizations/comparison_baseline_vs_v7_1_region_reliability_aux/`, `../experiments/visualizations/comparison_v2_loss005_vs_v7_1_region_reliability_aux/`, `../experiments/visualizations/comparison_v6_vs_v7_1_region_reliability_aux/` |
 | V7.2 | `../experiments/metrics/v7_roi_grid3x3_region_reliability_weighted_metrics.csv` | `../experiments/visualizations/v7_roi_grid3x3_region_reliability_weighted/` | `../experiments/visualizations/comparison_baseline_v2_1_v7_1_v7_2/` |
 | V7.3 | `../experiments/metrics/v7_roi_grid3x3_region_reliability_delta_gate_metrics.csv`, `../experiments/metrics/v7_roi_grid3x3_region_reliability_delta_gate_rerun_metrics.csv` | `../experiments/visualizations/v7_roi_grid3x3_region_reliability_delta_gate/` | `../experiments/visualizations/comparison_baseline_v2_1_v7_2_v7_3/` |
+| V7.4 | `../experiments/metrics/v7_roi_grid3x3_region_reliability_soft_delta_gate_metrics.csv` | `../experiments/visualizations/v7_roi_grid3x3_region_reliability_soft_delta_gate/` | `../experiments/visualizations/comparison_baseline_v2_1_v7_2_v7_3_v7_4/` |
 
 ## Next steps
 
@@ -375,7 +399,8 @@ For each completed run, save these artifacts:
 5. Treat V7.1 as an auxiliary reliability ablation.
 6. Treat V7.2 as the first useful reliability variant because it beats the baseline, even though V2.1 remains stronger.
 7. Treat V7.3 as a negative reliability ablation. The rerun still stays below baseline on AP3D Moderate, so directly shrinking the final depth delta with reliability should not be the main path.
-8. If continuing before V8, the next code improvement should likely be V6.1 adaptive residual logits or V4.2 mask-as-feature.
+8. Treat V7.4 as evidence that a softer final-delta gate is not enough. It is only marginally better than V7.3 and still below baseline.
+9. If continuing before V8, the next code improvement should likely be V6.1 adaptive residual logits or V4.2 mask-as-feature.
 
 ## Dissertation interpretation
 

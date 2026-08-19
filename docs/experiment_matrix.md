@@ -20,7 +20,7 @@ This file tracks the dissertation implementation stage. The original plan was Ba
 | V7.1 | Region reliability head with auxiliary-only supervision | `../experiments/runs/v7_roi_grid3x3_region_reliability_aux/` | completed; below baseline and V2.1 |
 | V7.2 | Region reliability used as a bias for ROI-cell weighting | `../experiments/runs/v7_roi_grid3x3_region_reliability_weighted/` | completed; better than baseline/V7.1 but below V2.1 |
 | V7.3 | Region reliability used as a gate on the final depth delta | `../experiments/runs/v7_roi_grid3x3_region_reliability_delta_gate/` | completed/rerun; below baseline and V7.2 |
-| V7.4 | Soft reliability gate on the final depth delta | `../experiments/runs/v7_roi_grid3x3_region_reliability_soft_delta_gate/` | ready to run |
+| V7.4 | Soft reliability gate on the final depth delta | `../experiments/runs/v7_roi_grid3x3_region_reliability_soft_delta_gate/` | completed; slightly above V7.3, below baseline/V7.2/V2.1 |
 
 ## Fallback experiments
 
@@ -47,8 +47,8 @@ The next useful paths are:
 6. Treat V7.2 as evidence that reliability is useful only when it affects aggregation, not only as auxiliary supervision.
 7. Treat V7.3 as evidence that reliability should not simply multiply the final depth delta. The rerun confirms this, with AP3D Moderate 11.1904 at best epoch 19.
 8. Keep V7.2 as the useful reliability ablation, but keep V2.1 as the strongest completed result.
-9. Run V7.4 next if we want to check whether a softer delta gate fixes V7.3 without jumping to V6.1.
-10. If V7.4 also fails, prefer V6.1 adaptive residual logits over another delta-gating variant.
+9. Treat V7.4 as evidence that a softer delta gate does not fix V7.3 enough. Best AP3D Moderate is 11.2016 at epoch 19.
+10. Prefer V6.1 adaptive residual logits or V4.2 mask-as-feature over another final-delta gating variant.
 
 ## Implementation note
 
@@ -64,6 +64,6 @@ V7.2 keeps the same reliability supervision, but uses the reliability prediction
 
 V7.3 keeps the ROI-cell aggregation closer to V2.1 and uses reliability after aggregation. The weighted reliability score becomes an extra multiplicative gate on the final regional depth delta. The rerun reached best epoch 19 with AP3D Moderate 11.1904. This is still below the baseline and below V7.2, so the gate is probably too restrictive. The reliability signal is more useful when it affects region aggregation, as in V7.2, than when it directly shrinks the final depth correction. V7.3 should be kept as a negative ablation, not as a candidate for longer training.
 
-V7.4 changes the V7.3 gate into a centered soft scale. Instead of forcing the depth delta to be multiplied by a value in `[0, 1]`, the soft gate is `1 + alpha * (reliability - 0.5)`. This keeps the correction near the V2.1 behavior while still allowing reliability to reduce or increase it slightly.
+V7.4 changes the V7.3 gate into a centered soft scale. Instead of forcing the depth delta to be multiplied by a value in `[0, 1]`, the soft gate is `1 + alpha * (reliability - 0.5)`. This keeps the correction near the V2.1 behavior while still allowing reliability to reduce or increase it slightly. The result is only slightly better than V7.3, with AP3D Moderate 11.2016, so final-delta reliability gating should not be the main direction.
 
 The most important comparison is not only whether AP improves. The experiments should also show how the model changes failure cases. A useful variant should improve AP3D without making projected 3D boxes visibly worse on common KITTI examples.
