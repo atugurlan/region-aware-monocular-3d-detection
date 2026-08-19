@@ -60,6 +60,10 @@ class MonoDGP(nn.Module):
         self.region_aware_use_region_mask = region_aware_cfg.get('use_region_mask', False)
         self.region_aware_output_scale = region_aware_cfg.get('output_scale', 1.0)
         self.region_aware_use_learnable_gate = region_aware_cfg.get('use_learnable_gate', True)
+        self.region_aware_reliability_mode = region_aware_cfg.get('reliability_mode', 'auxiliary_only')
+        self.region_aware_reliability_delta_gate_alpha = float(
+            region_aware_cfg.get('reliability_delta_gate_alpha', 0.5)
+        )
 
         if self.region_aware_enabled:
             self.region_geometry_head = RegionAwareGeometryHead(
@@ -303,7 +307,27 @@ class MonoDGP(nn.Module):
                 else:
                     region_gate = self.region_depth_gate
                 region_geometry['region_depth_delta_raw_cells'] = raw_region_depth_delta_cells
-                region_depth_delta = region_gate * raw_region_depth_delta
+                if (
+                    self.region_aware_reliability_mode in ('delta_gate', 'logit_bias_delta_gate')
+                    and 'query_region_reliability' in region_geometry
+                ):
+                    reliability_gate = region_geometry['query_region_reliability']
+                    region_geometry['region_reliability_delta_gate'] = reliability_gate
+                    region_depth_delta = region_gate * reliability_gate * raw_region_depth_delta
+                elif (
+                    self.region_aware_reliability_mode in ('soft_delta_gate', 'logit_bias_soft_delta_gate')
+                    and 'query_region_reliability' in region_geometry
+                ):
+                    reliability_gate = (
+                        1.0
+                        + self.region_aware_reliability_delta_gate_alpha
+                        * (region_geometry['query_region_reliability'] - 0.5)
+                    )
+                    reliability_gate = torch.clamp(reliability_gate, min=0.0)
+                    region_geometry['region_reliability_delta_gate'] = reliability_gate
+                    region_depth_delta = region_gate * reliability_gate * raw_region_depth_delta
+                else:
+                    region_depth_delta = region_gate * raw_region_depth_delta
                 region_geometry['query_region_depth_delta_raw'] = raw_region_depth_delta
                 region_geometry['query_region_depth_delta'] = region_depth_delta
                 region_geometry['region_depth_gate'] = region_gate

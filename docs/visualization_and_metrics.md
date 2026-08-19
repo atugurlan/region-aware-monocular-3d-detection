@@ -229,3 +229,32 @@ Generated folders and files:
 - `../experiments/visualizations/comparison_baseline_v2_1_v7_1_v7_2/`
 - `../experiments/metrics/v7_roi_grid3x3_region_reliability_weighted_metrics.csv`
 - `../experiments/plots/v7_2_metric_summary.md`
+
+
+## 10. Current V7.3 artifacts
+
+V7.3 was run twice. The latest rerun finished with best epoch 19 and AP3D Moderate 11.1904. It is still a negative ablation compared with baseline and V7.2.
+
+V7.3 was visualized after the 20-epoch run with:
+
+```powershell
+python -B tools/visualize_kitti_predictions.py `
+  --data_root ../data/kitti `
+  --pred_dir ../experiments/runs/v7_roi_grid3x3_region_reliability_delta_gate/v7_roi_grid3x3_region_reliability_delta_gate/outputs/data `
+  --out_dir ../experiments/visualizations/v7_roi_grid3x3_region_reliability_delta_gate `
+  --max_images 20 `
+  --score_threshold 0.2 `
+  --class_name Car
+```
+
+Generated folders and files:
+
+- `../experiments/visualizations/v7_roi_grid3x3_region_reliability_delta_gate/`
+- `../experiments/visualizations/comparison_baseline_v2_1_v7_2_v7_3/`
+- `../experiments/metrics/v7_roi_grid3x3_region_reliability_delta_gate_metrics.csv`
+- `../experiments/metrics/v7_roi_grid3x3_region_reliability_delta_gate_rerun_metrics.csv`
+
+
+## 11. Next artifact to generate
+
+The next run to visualize should be V7.4 if the soft delta gate experiment is executed. Use the same image IDs as V7.2 and V7.3 so the qualitative comparison stays easy to read.

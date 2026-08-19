@@ -144,7 +144,7 @@ class RegionAwareGeometryHead(nn.Module):
         if self.reliability_head is not None:
             region_reliability_logits = self.reliability_head(region_features)
             region_reliability = torch.sigmoid(region_reliability_logits)
-            if self.reliability_mode == "logit_bias":
+            if self.reliability_mode in ("logit_bias", "logit_bias_delta_gate", "logit_bias_soft_delta_gate"):
                 region_logits = region_logits + self.reliability_logit_scale * region_reliability.squeeze(-1)
         else:
             region_reliability_logits = None
@@ -173,6 +173,10 @@ class RegionAwareGeometryHead(nn.Module):
         if region_reliability is not None:
             output["region_reliability"] = region_reliability
             output["region_reliability_logits"] = region_reliability_logits
+            output["query_region_reliability"] = torch.sum(
+                region_weights.unsqueeze(-1) * region_reliability,
+                dim=2,
+            )
 
         if region_uncertainty is not None:
             output["region_uncertainty"] = region_uncertainty
