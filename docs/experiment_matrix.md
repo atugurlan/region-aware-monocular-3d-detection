@@ -17,6 +17,10 @@ This file tracks the dissertation implementation stage. The original plan was Ba
 | V4.1 | V4 with regional loss coefficient 0.05 | `../experiments/runs/v4_roi_grid3x3_mask_gated_loss005/` | completed; better than V4, below V2.1 |
 | V5 | 3x3 ROI-grid correction with uncertainty weighting and mask guidance | `../experiments/runs/v5_roi_grid3x3_uncertainty_mask_gated/` | completed; weakest region-aware variant |
 | V6 | Adaptive query-region fusion with query-level depth gate | `../experiments/runs/v6_roi_grid3x3_adaptive_region_fusion/` | completed; below baseline and V2.1 |
+| V7.1 | Region reliability head with auxiliary-only supervision | `../experiments/runs/v7_roi_grid3x3_region_reliability_aux/` | completed; below baseline and V2.1 |
+| V7.2 | Region reliability used as a bias for ROI-cell weighting | `../experiments/runs/v7_roi_grid3x3_region_reliability_weighted/` | completed; better than baseline/V7.1 but below V2.1 |
+| V7.3 | Region reliability used as a gate on the final depth delta | `../experiments/runs/v7_roi_grid3x3_region_reliability_delta_gate/` | completed/rerun; below baseline and V7.2 |
+| V7.4 | Soft reliability gate on the final depth delta | `../experiments/runs/v7_roi_grid3x3_region_reliability_soft_delta_gate/` | completed; slightly above V7.3, below baseline/V7.2/V2.1 |
 
 ## Fallback experiments
 
@@ -39,7 +43,12 @@ The next useful paths are:
 2. Use V3, V3.1, V4, V4.1, and V5 as ablations that explain what did not help.
 3. Treat V6 as evidence that a more expressive fusion block alone does not solve the depth correction problem.
 4. Keep V2.1 as the stable result for the first stage.
-5. Move next toward region-level reliability or safer auxiliary supervision, because V6 improved the fusion design but not AP3D.
+5. Treat V7.1 as evidence that auxiliary reliability alone does not improve AP3D in the current design.
+6. Treat V7.2 as evidence that reliability is useful only when it affects aggregation, not only as auxiliary supervision.
+7. Treat V7.3 as evidence that reliability should not simply multiply the final depth delta. The rerun confirms this, with AP3D Moderate 11.1904 at best epoch 19.
+8. Keep V7.2 as the useful reliability ablation, but keep V2.1 as the strongest completed result.
+9. Treat V7.4 as evidence that a softer delta gate does not fix V7.3 enough. Best AP3D Moderate is 11.2016 at epoch 19.
+10. Prefer V6.1 adaptive residual logits or V4.2 mask-as-feature over another final-delta gating variant.
 
 ## Implementation note
 
@@ -48,5 +57,13 @@ The current variants use ROIAlign on the predicted 2D object box for each object
 The regional depth correction is multiplied by a learnable gate initialized at zero. This avoids forcing a weak regional head into the depth prediction too early in training.
 
 V6 changes this gate and aggregation strategy. Instead of using only query-level logits over the region grid and one global scalar gate, V6 predicts region weights from the interaction between each object query and each ROI cell. It also predicts a gate per query, so different detected objects can use different amounts of regional correction. The 20-epoch result did not improve AP3D over V2.1, so this design is useful as an ablation rather than as the final candidate.
+
+V7.1 returns to the simpler V2.1 correction path and adds a reliability head per ROI cell. Reliability is supervised with a target derived from the error between each cell residual and the matched object-level depth residual. The first V7 version is auxiliary-only, so it should not destabilize final depth unless the extra supervision changes the shared region features too much. The 20-epoch result is below V2.1, which means this auxiliary signal is not enough by itself.
+
+V7.2 keeps the same reliability supervision, but uses the reliability prediction inside the ROI-cell aggregation. The reliability score is added as a bias to the region logits before softmax. This means a region that looks more reliable can receive a larger weight when the final regional depth correction is computed. The result improves clearly over V7.1 and also beats the baseline, but it remains below V2.1. The next reliability step should change how reliability gates the final depth delta, not only how it changes the softmax over ROI cells.
+
+V7.3 keeps the ROI-cell aggregation closer to V2.1 and uses reliability after aggregation. The weighted reliability score becomes an extra multiplicative gate on the final regional depth delta. The rerun reached best epoch 19 with AP3D Moderate 11.1904. This is still below the baseline and below V7.2, so the gate is probably too restrictive. The reliability signal is more useful when it affects region aggregation, as in V7.2, than when it directly shrinks the final depth correction. V7.3 should be kept as a negative ablation, not as a candidate for longer training.
+
+V7.4 changes the V7.3 gate into a centered soft scale. Instead of forcing the depth delta to be multiplied by a value in `[0, 1]`, the soft gate is `1 + alpha * (reliability - 0.5)`. This keeps the correction near the V2.1 behavior while still allowing reliability to reduce or increase it slightly. The result is only slightly better than V7.3, with AP3D Moderate 11.2016, so final-delta reliability gating should not be the main direction.
 
 The most important comparison is not only whether AP improves. The experiments should also show how the model changes failure cases. A useful variant should improve AP3D without making projected 3D boxes visibly worse on common KITTI examples.

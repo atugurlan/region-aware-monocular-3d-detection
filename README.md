@@ -37,8 +37,12 @@ The experiments are tracked in [docs/experiment_results.md](docs/experiment_resu
 | V3.1 soft uncertainty | V3 without auxiliary uncertainty loss | 10.9410 | completed, worse than V3 and baseline |
 | V4.1 mask, loss 0.05 | Fair mask-guidance comparison | 13.6364 | completed, better than V4/baseline but worse than V2.1 |
 | V6 adaptive fusion | Query-dependent region fusion and query-level gate | 11.5201 | completed, below baseline and V2.1 |
+| V7.1 reliability aux | Region reliability auxiliary-only | 10.7080 | completed, below baseline and V2.1 |
+| V7.2 reliability weighted | Reliability-guided ROI-cell weighting | 13.1804 | completed, better than baseline/V7.1 but below V2.1 |
+| V7.3 reliability delta gate | Reliability-gated regional depth delta | 10.3603 | completed, below baseline/V7.2 |
+| V7.4 soft reliability delta gate | Soft reliability-gated regional depth delta | - | ready to run |
 
-At this stage, V2.1 is still the strongest completed variant. V4.1 shows that lowering the mask-guidance loss helps, but the mask branch remains below the simpler V2.1 ROI-grid correction. V3.1 shows that simply softening uncertainty weighting does not solve the uncertainty branch; it drops below both V3 and the baseline. V6 tested adaptive query-region fusion and a query-level gate, but it also stayed below V2.1. This means the next stronger direction should focus on region reliability or safer auxiliary supervision, not only a more expressive fusion block.
+At this stage, V2.1 is still the strongest completed variant. V4.1 shows that lowering the mask-guidance loss helps, but the mask branch remains below the simpler V2.1 ROI-grid correction. V3.1 shows that simply softening uncertainty weighting does not solve the uncertainty branch; it drops below both V3 and the baseline. V6 tested adaptive query-region fusion and a query-level gate, but it also stayed below V2.1. V7.1 tested region reliability as auxiliary supervision, but it also stayed below V2.1. V7.2 is better: using reliability directly in the region weighting recovers most of the gap and beats the baseline, but it still does not beat V2.1. V7.3 tested reliability as a gate on the final regional depth correction, but it dropped below the baseline. V7.4 fixes the aggressive part of V7.3 by using a soft gate centered around 1.0.
 
 ## Planned Ablations
 
@@ -57,6 +61,10 @@ The original ablation idea was V1-V5. After the first results, the plan became m
 | V4.1 | V4 with loss coefficient 0.05 | completed, better than V4 but below V2.1 |
 | V5 | ROI grid 3x3 + uncertainty + mask | completed, weakest region-aware variant |
 | V6 | ROI grid 3x3 + adaptive query-region fusion | completed, below V2.1 |
+| V7.1 | ROI grid 3x3 + auxiliary reliability prediction | completed, below V2.1 |
+| V7.2 | ROI grid 3x3 + reliability-guided region weighting | completed, better than baseline/V7.1 but below V2.1 |
+| V7.3 | ROI grid 3x3 + reliability-gated depth delta | completed, below baseline/V7.2 |
+| V7.4 | ROI grid 3x3 + soft reliability-gated depth delta | ready to run |
 
 Fallback variants are also documented in [docs/experiment_matrix.md](docs/experiment_matrix.md). They are useful if direct depth correction becomes unstable again.
 

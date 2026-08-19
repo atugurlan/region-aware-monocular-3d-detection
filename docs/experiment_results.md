@@ -28,6 +28,10 @@ This document tracks the baseline and region-aware experiments. It should be upd
 | V4.1 | `configs/variants/v4_grid3x3_mask_loss005.yaml` | 20 | completed | 19 | 18.7841 | 13.6364 | 10.9500 | 27.3974 | 19.4732 | 16.2057 | Fair mask run with loss 0.05. Better than baseline and V4, but still below V2.1. |
 | V5 | `configs/variants/v5_grid3x3_uncertainty_mask.yaml` | 20 | completed | 13 | 13.6815 | 9.9023 | 8.0324 | 20.6197 | 14.9392 | 12.5606 | Combining uncertainty and mask is the weakest region-aware variant. |
 | V6 | `configs/variants/v6_adaptive_region_fusion.yaml` | 20 | completed | 20 | 14.1765 | 11.5201 | 9.4688 | 22.5077 | 17.6326 | 14.8261 | Adaptive fusion improves the design, but not AP3D. It is below baseline and V2.1. |
+| V7.1 | `configs/variants/v7_region_reliability_aux.yaml` | 20 | completed | 19 | 14.3914 | 10.7080 | 8.6103 | 22.6127 | 16.5019 | 13.4920 | Reliability auxiliary-only is below baseline and V2.1. |
+| V7.2 | `configs/variants/v7_region_reliability_weighted.yaml` | 20 | completed | 19 | 18.4688 | 13.1804 | 10.9630 | 26.5431 | 19.1961 | 16.2526 | Best reliability variant so far; better than baseline but below V2.1. |
+| V7.3 | `configs/variants/v7_region_reliability_delta_gate.yaml` | 20 | completed/rerun | 19 | 14.9893 | 11.1904 | 8.8537 | 22.3250 | 16.7252 | 13.6817 | Negative ablation; direct reliability gate on depth delta is too restrictive. |
+| V7.4 | `configs/variants/v7_region_reliability_soft_delta_gate.yaml` | 20 | completed | 19 | 15.3549 | 11.2016 | 9.2032 | 23.2514 | 16.7522 | 13.8070 | Slightly better than V7.3, but still below baseline, V7.2, and V2.1. |
 
 ## Current best result
 
@@ -271,6 +275,101 @@ Artifacts:
 - V4.1 comparison images: `../experiments/visualizations/comparison_v4_loss005_vs_v6_adaptive_region_fusion/`;
 - training curve: `../experiments/plots/v6_adaptive_region_fusion_training_curve.png`.
 
+## V7.1 ROI 3x3 + region reliability auxiliary-only notes
+
+Config: `configs/variants/v7_region_reliability_aux.yaml`
+
+Output folder: `../experiments/runs/v7_roi_grid3x3_region_reliability_aux/`
+
+Best result:
+
+- best epoch: 19;
+- 3D AP: Easy 14.3914, Moderate 10.7080, Hard 8.6103;
+- BEV AP: Easy 22.6127, Moderate 16.5019, Hard 13.4920;
+- 2D bbox AP: Easy 81.1360, Moderate 72.4465, Hard 66.3892.
+
+V7.1 added a region reliability head per ROI cell and trained it with an auxiliary target derived from the local residual error. The reliability output was not used to change final depth. This was intentionally safer than V7.2, because previous variants showed that direct depth modification can reduce AP3D. The result is below the baseline and below V2.1, so auxiliary reliability alone is not enough in the current form. It is still useful as an ablation because it shows that simply asking the model to predict reliable regions does not automatically improve the shared region features.
+
+Artifacts:
+
+- metrics CSV: `../experiments/metrics/v7_roi_grid3x3_region_reliability_aux_metrics.csv`;
+- projected 3D boxes: `../experiments/visualizations/v7_roi_grid3x3_region_reliability_aux/`;
+- baseline comparison images: `../experiments/visualizations/comparison_baseline_vs_v7_1_region_reliability_aux/`;
+- V2.1 comparison images: `../experiments/visualizations/comparison_v2_loss005_vs_v7_1_region_reliability_aux/`;
+- V6 comparison images: `../experiments/visualizations/comparison_v6_vs_v7_1_region_reliability_aux/`;
+- training curve: `../experiments/plots/v7_1_region_reliability_aux_training_curve.png`.
+
+## V7.2 ROI 3x3 + reliability-guided region weighting notes
+
+Config: `configs/variants/v7_region_reliability_weighted.yaml`
+
+Output folder: `../experiments/runs/v7_roi_grid3x3_region_reliability_weighted/`
+
+Best result:
+
+- best epoch: 19;
+- 3D AP: Easy 18.4688, Moderate 13.1804, Hard 10.9630;
+- BEV AP: Easy 26.5431, Moderate 19.1961, Hard 16.2526;
+- 2D bbox AP: Easy 81.1603, Moderate 74.9691, Hard 67.8467.
+
+V7.2 uses the same reliability head as V7.1, but the reliability score is no longer only an auxiliary output. It is added as a bias to the region logits before the softmax that combines ROI cells. This means the model can give more weight to local regions that it predicts as more reliable. The result is much stronger than V7.1 and also better than the original MonoDGP baseline on AP3D Moderate. However, it is still below V2.1, so the simple gated ROI residual remains the strongest completed variant.
+
+This result is useful for the dissertation because it separates two conclusions. First, reliability as auxiliary supervision alone is weak. Second, reliability becomes useful when it is connected to the actual regional aggregation. The remaining problem is that weighting ROI cells is probably not enough; the next version should test reliability as a gate on the final regional depth correction.
+
+Artifacts:
+
+- metrics CSV: `../experiments/metrics/v7_roi_grid3x3_region_reliability_weighted_metrics.csv`;
+- projected 3D boxes: `../experiments/visualizations/v7_roi_grid3x3_region_reliability_weighted/`;
+- comparison images: `../experiments/visualizations/comparison_baseline_v2_1_v7_1_v7_2/`;
+- metric summary: `../experiments/plots/v7_2_metric_summary.md`.
+
+## V7.3 ROI 3x3 + reliability-gated depth delta notes
+
+Config: `configs/variants/v7_region_reliability_delta_gate.yaml`
+
+Output folder: `../experiments/runs/v7_roi_grid3x3_region_reliability_delta_gate/`
+
+Best result:
+
+- best epoch: 19;
+- 3D AP: Easy 14.9893, Moderate 11.1904, Hard 8.8537;
+- BEV AP: Easy 22.3250, Moderate 16.7252, Hard 13.6817;
+- 2D bbox AP: Easy 86.1625, Moderate 77.7618, Hard 69.3965.
+
+V7.3 uses the same reliability branch, but applies reliability after region aggregation. The aggregated reliability score multiplies the final regional depth delta, so the model can reduce the local correction when it predicts low reliability. The rerun confirms the same direction as the first V7.3 run. The model is below V7.2 and also below the baseline on AP3D Moderate, even though the 2D bbox AP is strong. This means the object localization branch is not the main problem. The loss appears in depth/BEV, so the direct reliability gate probably suppresses useful regional depth corrections, not only bad ones.
+
+The useful conclusion is that reliability should influence which local regions are selected, or should change the final correction only softly. It should not simply shrink the final depth update with a hard multiplicative gate. V7.2 remains the best reliability variant, while V2.1 remains the strongest completed model overall. V7.3 should not be extended to 100 epochs.
+
+Artifacts:
+
+- metrics CSV: `../experiments/metrics/v7_roi_grid3x3_region_reliability_delta_gate_metrics.csv`;
+- rerun metrics CSV: `../experiments/metrics/v7_roi_grid3x3_region_reliability_delta_gate_rerun_metrics.csv`;
+- projected 3D boxes: `../experiments/visualizations/v7_roi_grid3x3_region_reliability_delta_gate/`;
+- comparison images: `../experiments/visualizations/comparison_baseline_v2_1_v7_2_v7_3/`.
+
+
+## V7.4 ROI 3x3 + soft reliability-gated depth delta notes
+
+Config: `configs/variants/v7_region_reliability_soft_delta_gate.yaml`
+
+Output folder: `../experiments/runs/v7_roi_grid3x3_region_reliability_soft_delta_gate/`
+
+Best result:
+
+- best epoch: 19;
+- 3D AP: Easy 15.3549, Moderate 11.2016, Hard 9.2032;
+- BEV AP: Easy 23.2514, Moderate 16.7522, Hard 13.8070;
+- 2D bbox AP: Easy 81.2342, Moderate 71.1319, Hard 65.0686.
+
+V7.4 was introduced to soften the direct gate from V7.3. Instead of multiplying the regional depth delta by a reliability value in `[0, 1]`, the model uses a centered scale around 1.0. This means reliability can reduce or increase the regional correction only mildly. The result is slightly better than V7.3 on AP3D Moderate, but the gain is very small: 11.2016 compared with 11.1904. It is still below the baseline and clearly below V7.2 and V2.1.
+
+The conclusion is that softening the gate avoids the most aggressive behavior, but it does not make final-delta reliability gating useful enough. The best reliability design remains V7.2, where reliability changes ROI-cell aggregation before the regional residual is computed. V7.4 should be kept as a controlled negative/near-neutral ablation, not as a candidate for longer training.
+
+Artifacts:
+
+- metrics CSV: `../experiments/metrics/v7_roi_grid3x3_region_reliability_soft_delta_gate_metrics.csv`;
+- projected 3D boxes: `../experiments/visualizations/v7_roi_grid3x3_region_reliability_soft_delta_gate/`;
+- comparison images: `../experiments/visualizations/comparison_baseline_v2_1_v7_2_v7_3_v7_4/`.
 ## Analysis artifacts per run
 
 For each completed run, save these artifacts:
@@ -286,6 +385,10 @@ For each completed run, save these artifacts:
 | V4.1 | `../experiments/metrics/v4_roi_grid3x3_mask_gated_loss005_metrics.csv` | `../experiments/visualizations/v4_roi_grid3x3_mask_gated_loss005/` | `../experiments/visualizations/comparison_baseline_vs_v4_roi_grid3x3_mask_gated_loss005/`, `../experiments/visualizations/comparison_v2_loss005_vs_v4_roi_grid3x3_mask_gated_loss005/`, `../experiments/visualizations/comparison_v4_vs_v4_loss005/` |
 | V5 | `../experiments/metrics/v5_roi_grid3x3_uncertainty_mask_gated_metrics.csv` | `../experiments/visualizations/v5_roi_grid3x3_uncertainty_mask_gated/` | `../experiments/visualizations/comparison_baseline_vs_v5_roi_grid3x3_uncertainty_mask_gated/`, `../experiments/visualizations/comparison_v2_loss005_vs_v5_roi_grid3x3_uncertainty_mask_gated/`, `../experiments/visualizations/comparison_v3_vs_v5_roi_grid3x3_uncertainty_mask_gated/`, `../experiments/visualizations/comparison_v4_vs_v5_roi_grid3x3_uncertainty_mask_gated/` |
 | V6 | `../experiments/metrics/v6_roi_grid3x3_adaptive_region_fusion_metrics.csv` | `../experiments/visualizations/v6_roi_grid3x3_adaptive_region_fusion/` | `../experiments/visualizations/comparison_baseline_vs_v6_adaptive_region_fusion/`, `../experiments/visualizations/comparison_v2_loss005_vs_v6_adaptive_region_fusion/`, `../experiments/visualizations/comparison_v4_loss005_vs_v6_adaptive_region_fusion/` |
+| V7.1 | `../experiments/metrics/v7_roi_grid3x3_region_reliability_aux_metrics.csv` | `../experiments/visualizations/v7_roi_grid3x3_region_reliability_aux/` | `../experiments/visualizations/comparison_baseline_vs_v7_1_region_reliability_aux/`, `../experiments/visualizations/comparison_v2_loss005_vs_v7_1_region_reliability_aux/`, `../experiments/visualizations/comparison_v6_vs_v7_1_region_reliability_aux/` |
+| V7.2 | `../experiments/metrics/v7_roi_grid3x3_region_reliability_weighted_metrics.csv` | `../experiments/visualizations/v7_roi_grid3x3_region_reliability_weighted/` | `../experiments/visualizations/comparison_baseline_v2_1_v7_1_v7_2/` |
+| V7.3 | `../experiments/metrics/v7_roi_grid3x3_region_reliability_delta_gate_metrics.csv`, `../experiments/metrics/v7_roi_grid3x3_region_reliability_delta_gate_rerun_metrics.csv` | `../experiments/visualizations/v7_roi_grid3x3_region_reliability_delta_gate/` | `../experiments/visualizations/comparison_baseline_v2_1_v7_2_v7_3/` |
+| V7.4 | `../experiments/metrics/v7_roi_grid3x3_region_reliability_soft_delta_gate_metrics.csv` | `../experiments/visualizations/v7_roi_grid3x3_region_reliability_soft_delta_gate/` | `../experiments/visualizations/comparison_baseline_v2_1_v7_2_v7_3_v7_4/` |
 
 ## Next steps
 
@@ -293,7 +396,11 @@ For each completed run, save these artifacts:
 2. Treat V3.1 as evidence that softer uncertainty weighting does not fix the uncertainty branch.
 3. Treat V4.1 as evidence that weaker regional supervision helps mask guidance, but that mask guidance is still below V2.1.
 4. Treat V6 as evidence that adaptive query-region fusion alone is not enough to improve AP3D.
-5. Move next toward region-level reliability or auxiliary-only regional supervision, while keeping V2.1 as the strongest completed result.
+5. Treat V7.1 as an auxiliary reliability ablation.
+6. Treat V7.2 as the first useful reliability variant because it beats the baseline, even though V2.1 remains stronger.
+7. Treat V7.3 as a negative reliability ablation. The rerun still stays below baseline on AP3D Moderate, so directly shrinking the final depth delta with reliability should not be the main path.
+8. Treat V7.4 as evidence that a softer final-delta gate is not enough. It is only marginally better than V7.3 and still below baseline.
+9. If continuing before V8, the next code improvement should likely be V6.1 adaptive residual logits or V4.2 mask-as-feature.
 
 ## Dissertation interpretation
 

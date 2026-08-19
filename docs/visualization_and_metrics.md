@@ -17,7 +17,7 @@ Example for the baseline:
 ```powershell
 python -B tools/visualize_kitti_predictions.py `
   --data_root ../data/kitti `
-  --pred_dir ../experiments/runs/baseline_20ep/monodgp/outputs/data `
+  --pred_dir ../experiments/runs/baseline_20ep/monodgp/outputs/data
   --out_dir ../experiments/visualizations/baseline_20ep `
   --max_images 20
 ```
@@ -174,3 +174,112 @@ The generated plots are:
 - `../experiments/plots/variant_comparison_ap3d_moderate.png`
 - `../experiments/plots/variant_comparison_moderate_metrics.png`
 - `../experiments/plots/variant_best_metrics_summary.md`
+
+
+## 8. Current V7.1 artifacts
+
+V7.1 was visualized after the 20-epoch run with:
+
+```powershell
+python -B tools/visualize_kitti_predictions.py `
+  --data_root ../data/kitti `
+  --pred_dir ../experiments/runs/v7_roi_grid3x3_region_reliability_aux/v7_roi_grid3x3_region_reliability_aux/outputs/data `
+  --out_dir ../experiments/visualizations/v7_roi_grid3x3_region_reliability_aux `
+  --max_images 20
+```
+
+Generated folders:
+
+- `../experiments/visualizations/v7_roi_grid3x3_region_reliability_aux/`
+- `../experiments/visualizations/comparison_baseline_vs_v7_1_region_reliability_aux/`
+- `../experiments/visualizations/comparison_v2_loss005_vs_v7_1_region_reliability_aux/`
+- `../experiments/visualizations/comparison_v6_vs_v7_1_region_reliability_aux/`
+
+The V7.1 metric CSV is:
+
+```text
+../experiments/metrics/v7_roi_grid3x3_region_reliability_aux_metrics.csv
+```
+
+The generated plots are:
+
+- `../experiments/plots/v7_1_region_reliability_aux_training_curve.png`
+- `../experiments/plots/variant_comparison_ap3d_moderate.png`
+- `../experiments/plots/variant_comparison_moderate_metrics.png`
+- `../experiments/plots/variant_best_metrics_summary.md`
+
+
+## 9. Current V7.2 artifacts
+
+V7.2 was visualized after the 20-epoch run with:
+
+```powershell
+python -B tools/visualize_kitti_predictions.py `
+  --data_root ../data/kitti `
+  --pred_dir ../experiments/runs/v7_roi_grid3x3_region_reliability_weighted/v7_roi_grid3x3_region_reliability_weighted/outputs/data `
+  --out_dir ../experiments/visualizations/v7_roi_grid3x3_region_reliability_weighted `
+  --score_threshold 0.2 `
+  --class_name Car `
+  --image_ids "34,87,129,135,206,280,330,365,376,450"
+```
+
+Generated folders and files:
+
+- `../experiments/visualizations/v7_roi_grid3x3_region_reliability_weighted/`
+- `../experiments/visualizations/comparison_baseline_v2_1_v7_1_v7_2/`
+- `../experiments/metrics/v7_roi_grid3x3_region_reliability_weighted_metrics.csv`
+- `../experiments/plots/v7_2_metric_summary.md`
+
+
+## 10. Current V7.3 artifacts
+
+V7.3 was run twice. The latest rerun finished with best epoch 19 and AP3D Moderate 11.1904. It is still a negative ablation compared with baseline and V7.2.
+
+V7.3 was visualized after the 20-epoch run with:
+
+```powershell
+python -B tools/visualize_kitti_predictions.py `
+  --data_root ../data/kitti `
+  --pred_dir ../experiments/runs/v7_roi_grid3x3_region_reliability_delta_gate/v7_roi_grid3x3_region_reliability_delta_gate/outputs/data `
+  --out_dir ../experiments/visualizations/v7_roi_grid3x3_region_reliability_delta_gate `
+  --max_images 20 `
+  --score_threshold 0.2 `
+  --class_name Car
+```
+
+Generated folders and files:
+
+- `../experiments/visualizations/v7_roi_grid3x3_region_reliability_delta_gate/`
+- `../experiments/visualizations/comparison_baseline_v2_1_v7_2_v7_3/`
+- `../experiments/metrics/v7_roi_grid3x3_region_reliability_delta_gate_metrics.csv`
+- `../experiments/metrics/v7_roi_grid3x3_region_reliability_delta_gate_rerun_metrics.csv`
+
+
+## 12. Next artifact to generate
+
+The next run to visualize should be V7.4 if the soft delta gate experiment is executed. Use the same image IDs as V7.2 and V7.3 so the qualitative comparison stays easy to read.
+
+## 11. Current V7.4 artifacts
+
+V7.4 was visualized after the 20-epoch run with:
+
+```powershell
+python -B tools/visualize_kitti_predictions.py `
+  --data_root ../data/kitti `
+  --pred_dir ../experiments/runs/v7_roi_grid3x3_region_reliability_soft_delta_gate/v7_roi_grid3x3_region_reliability_soft_delta_gate/outputs/data `
+  --out_dir ../experiments/visualizations/v7_roi_grid3x3_region_reliability_soft_delta_gate `
+  --max_images 20 `
+  --score_threshold 0.2 `
+  --class_name Car
+```
+
+Generated folders and files:
+
+- `../experiments/visualizations/v7_roi_grid3x3_region_reliability_soft_delta_gate/`
+- `../experiments/visualizations/comparison_baseline_v2_1_v7_2_v7_3_v7_4/`
+- `../experiments/metrics/v7_roi_grid3x3_region_reliability_soft_delta_gate_metrics.csv`
+
+
+## 12. Next artifact to generate
+
+If a new architecture is tested next, use the same selected examples from the V7.4 comparison folder. This keeps the qualitative comparison consistent across Baseline, V2.1, V7.2, V7.3, V7.4, and the next candidate.

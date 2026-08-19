@@ -60,6 +60,10 @@ class MonoDGP(nn.Module):
         self.region_aware_use_region_mask = region_aware_cfg.get('use_region_mask', False)
         self.region_aware_output_scale = region_aware_cfg.get('output_scale', 1.0)
         self.region_aware_use_learnable_gate = region_aware_cfg.get('use_learnable_gate', True)
+        self.region_aware_reliability_mode = region_aware_cfg.get('reliability_mode', 'auxiliary_only')
+        self.region_aware_reliability_delta_gate_alpha = float(
+            region_aware_cfg.get('reliability_delta_gate_alpha', 0.5)
+        )
 
         if self.region_aware_enabled:
             self.region_geometry_head = RegionAwareGeometryHead(
@@ -72,6 +76,9 @@ class MonoDGP(nn.Module):
                 fusion_type=region_aware_cfg.get('fusion_type', 'logit'),
                 use_query_gate=region_aware_cfg.get('use_query_gate', False),
                 gate_init=float(region_aware_cfg.get('gate_init', 0.0)),
+                use_reliability=region_aware_cfg.get('use_region_reliability', False),
+                reliability_mode=region_aware_cfg.get('reliability_mode', 'auxiliary_only'),
+                reliability_logit_scale=region_aware_cfg.get('reliability_logit_scale', 1.0),
             )
             if self.region_aware_use_learnable_gate:
                 gate_init = float(region_aware_cfg.get('gate_init', 0.0))
@@ -300,7 +307,27 @@ class MonoDGP(nn.Module):
                 else:
                     region_gate = self.region_depth_gate
                 region_geometry['region_depth_delta_raw_cells'] = raw_region_depth_delta_cells
-                region_depth_delta = region_gate * raw_region_depth_delta
+                if (
+                    self.region_aware_reliability_mode in ('delta_gate', 'logit_bias_delta_gate')
+                    and 'query_region_reliability' in region_geometry
+                ):
+                    reliability_gate = region_geometry['query_region_reliability']
+                    region_geometry['region_reliability_delta_gate'] = reliability_gate
+                    region_depth_delta = region_gate * reliability_gate * raw_region_depth_delta
+                elif (
+                    self.region_aware_reliability_mode in ('soft_delta_gate', 'logit_bias_soft_delta_gate')
+                    and 'query_region_reliability' in region_geometry
+                ):
+                    reliability_gate = (
+                        1.0
+                        + self.region_aware_reliability_delta_gate_alpha
+                        * (region_geometry['query_region_reliability'] - 0.5)
+                    )
+                    reliability_gate = torch.clamp(reliability_gate, min=0.0)
+                    region_geometry['region_reliability_delta_gate'] = reliability_gate
+                    region_depth_delta = region_gate * reliability_gate * raw_region_depth_delta
+                else:
+                    region_depth_delta = region_gate * raw_region_depth_delta
                 region_geometry['query_region_depth_delta_raw'] = raw_region_depth_delta
                 region_geometry['query_region_depth_delta'] = region_depth_delta
                 region_geometry['region_depth_gate'] = region_gate
@@ -608,6 +635,21 @@ class SetCriterion(nn.Module):
             ) / num_boxes
             losses['loss_region_uncertainty'] = uncertainty_loss
 
+        region_reliability = pred_region_geometry.get('region_reliability', None)
+        if region_reliability is not None and region_error is not None:
+            matched_region_reliability = region_reliability[idx].squeeze(-1)
+            matched_region_error = region_error[idx].squeeze(-1)
+            reliability_error = torch.abs(
+                matched_region_error.detach() - target_delta.unsqueeze(-1)
+            )
+            target_region_reliability = 1.0 / (1.0 + reliability_error)
+            reliability_loss = F.smooth_l1_loss(
+                matched_region_reliability,
+                target_region_reliability,
+                reduction='sum',
+            ) / num_boxes
+            losses['loss_region_reliability'] = reliability_loss
+
         return losses
     
     def _get_src_permutation_idx(self, indices):
@@ -748,6 +790,8 @@ def build(cfg):
         weight_dict['loss_region_geometry'] = region_aware_cfg.get('region_geometry_loss_coef', 0.05)
         if region_aware_cfg.get('use_depth_uncertainty', False):
             weight_dict['loss_region_uncertainty'] = region_aware_cfg.get('region_uncertainty_loss_coef', 0.02)
+        if region_aware_cfg.get('use_region_reliability', False):
+            weight_dict['loss_region_reliability'] = region_aware_cfg.get('region_reliability_loss_coef', 0.01)
     
     if cfg['aux_loss']:
         aux_weight_dict = {}
